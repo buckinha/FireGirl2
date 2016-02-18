@@ -1,24 +1,54 @@
+#DiamondSquare.py
+#Written by Hailey K Buckingham
+#On github, buckinha/DiamondSquare
+#
+
 import random
 import numpy as np
 
-def diamond_square(size, min_height, max_height, roughness, random_seed=None, AS_NP_ARRAY=True):
+def diamond_square(desired_size, min_height, max_height, roughness, random_seed=None, AS_NP_ARRAY=False):
     """Runs a diamond square algorithm and returns an array (or list) with the landscape
 
-    Internally, all heights are between 0 and 1, and will be rescaled at the end.
+        An important difference (possibly) between this, and other implementations of the 
+    diamond square algorithm is how I use the roughness parameter. For each "perturbation"
+    I pull a random number from a uniform distribution between min_height and max_height.
+    I then take the weighted average between that value, and the average value of the 
+    "neighbors", whether those be in the diamond or in the square step, as normal. The 
+    weights used for the weighted sum are (roughness) and (1-roughness) for the random
+    number and the average, respectively, where roughness is a float that always falls 
+    between 0 and 1.
+        The roughness value used in each iteration is based on the roughness parameter
+    passed in, and is computed as follows:
+
+        this_iteration_roughness = roughness**iteration_number
+
+    where the first iteration has iteration_number = 0. Thus, the first roughness value 
+    actually used (in the very first diamond and square step) is roughness**0 = 1. Thus,
+    the values for those first diamond and square step entries will be entirely random.
+    This effectively means that I am seeding with A 3x3 grid of random values, rather 
+    than with just the four corners.
+        As the process continues, the weight placed on the random number draw falls from
+    the original value of 1, to roughness**1, to roughness**2, and so on, ultimately 
+    approaching 0. This means that the values of new cells will slowly shift from being
+    purely random, to pure averages.
+
+
+    OTHER NOTES:
+    Internally, all heights are between 0 and 1, and are rescaled at the end.
+
 
     PARAMETERS
     ----------
-
     size
         The size of the grid to be returned. If an integer is passed, the return grid will
         have sides of this length. If an array-like is passed, the first two values will be 
         used as the array shape.
 
-    max_height
-        The maximum height allowed on the landscape
-
     min_height
         The minimum height allowed on the landscape
+
+    max_height
+        The maximum height allowed on the landscape
 
     roughness
         A float with value between 0 and 1, reflecting how bumpy the landscape should be. 
@@ -43,7 +73,16 @@ def diamond_square(size, min_height, max_height, roughness, random_seed=None, AS
     #sanitize inputs
     if roughness > 1: roughness = 1.0
     if roughness < 0: roughness = 0.0
-    size = abs(int(size))
+    
+    #check if size is iterable (i.e, it is likely a length-2 vector, etc...)
+    size = [-1,-1]
+    if not hasattr(desired_size, '__iter__'):
+        #it's not iterable, so it's probably an int
+        size[0] = desired_size
+        size[1] = desired_size
+    else:
+        size[0] = desired_size[0]
+        size[1] = desired_size[1]
 
 
     DS_size, iterations = get_DS_size_and_iters(size)
@@ -75,11 +114,14 @@ def diamond_square(size, min_height, max_height, roughness, random_seed=None, AS
     #rescale the array to fit the min and max heights specified
     DS_array = min_height + (DS_array * (max_height - min_height))
 
-    if AS_NP_ARRAY:
-        return DS_array
-    else:
-        return DS_array.tolist()
+    #trim array, if needed
 
+    final_array = DS_array[:size[0],:size[1]]
+
+    if AS_NP_ARRAY:
+        return final_array
+    else:
+        return final_array.tolist()
 
 
 def get_DS_size_and_iters(requested_size, max_power_of_two=13):
@@ -95,8 +137,7 @@ def get_DS_size_and_iters(requested_size, max_power_of_two=13):
     PARAMETERS
     ----------
     requested_size
-        An integer (for square grids) or 2D list-like object reflecting the size of grid that
-        is ultimately desired.
+        A 2D list-like object reflecting the size of grid that is ultimately desired.
 
     max_power_of_two
         an integer greater than 2, reflecting the maximum size grid that the algorithm can EVER
@@ -110,13 +151,7 @@ def get_DS_size_and_iters(requested_size, max_power_of_two=13):
     """
     if max_power_of_two < 3: max_power_of_two = 3
 
-    largest_edge = -1
-
-    if isinstance(requested_size,list) or isinstance(requested_size,np.ndarray):
-        largest_edge = max(requested_size)
-    else:
-        largest_edge = requested_size
-
+    largest_edge = max(requested_size)
 
     for power in range(1,max_power_of_two+1):
         d = (2**power) + 1
@@ -159,45 +194,34 @@ def diamond_step(DS_array, step_size, roughness):
                 #print(repr((i,j)))
                 DS_array[i,j] = diamond_displace(DS_array, i, j, half_step, roughness)
 
-
-
 def square_step(DS_array, step_size, roughness):
-    square_step_even_rows(DS_array, step_size, roughness)
-    square_step_odd_rows(DS_array, step_size, roughness)
+    """Does the square step for a given iteration.
 
-def square_step_even_rows(DS_array, step_size, roughness):
-    #rows increment every step_size, starting at 0
-    #cols increment every step_size, starting at half_step
-    #however:
-    # row 0 does not have values "above" so the averages will have to be aware of that
-    # the last row does not have values "below" either
+    During the diamond step, the diagonally adjacent cells are filled:
+
+     Value    FILLING    Value    FILLING   Value   ...
+
+    FILLING   DIAMOND   FILLING   DIAMOND  FILLING  ...
+ 
+     Value    FILLING    Value    FILLING   Value   ...
+
+      ...       ...       ...       ...      ...    ...
+
+    So we'll step with increment step_size over BOTH axes
+
+    """
 
     half_step = step_size/2
-    steps_x = range(          0, DS_array.shape[0], step_size)
-    steps_y = range(step_size/2, DS_array.shape[0], step_size)
+    steps_x = range(          0, DS_array.shape[0], half_step)
+    steps_y = range(          0, DS_array.shape[0], half_step)
+
     for i in steps_x:
         for j in steps_y:
             if DS_array[i,j] == -1.0:
                 DS_array[i,j] = square_displace(DS_array, i, j, half_step, roughness)
 
 
-def square_step_odd_rows(DS_array, step_size, roughness):
-    #rows increment every step_size, starting at half_step
-    #cols increment every step_size, starting at 0
-    #however:
-    # col 0 does not have any values "before" so the averages will have to be aware
-    # the last column does not have any values "after" either
-    half_step = step_size/2
-    steps_x = range(step_size/2, DS_array.shape[0], step_size)
-    steps_y = range(          0, DS_array.shape[0], step_size)
-    for i in steps_x:
-        for j in steps_y:
-            if DS_array[i,j] == -1.0:
-                DS_array[i,j] = square_displace(DS_array, i, j, half_step, roughness)
-
-
-
-#define the midpoint displacement step
+#defines the midpoint displacement for the diamond step
 def diamond_displace(DS_array, i, j, half_step, roughness):
     ul = DS_array[i-half_step, j-half_step]
     ur = DS_array[i-half_step, j+half_step]
@@ -211,8 +235,7 @@ def diamond_displace(DS_array, i, j, half_step, roughness):
     return (roughness*rand_val + (1.0-roughness)*ave)
 
 
-
-#define the midpoint displacement step
+#defines the midpoint displacement for the square step
 def square_displace(DS_array, i, j, half_step, roughness):
     _sum = 0.0
     divide_by = 4
@@ -247,3 +270,4 @@ def square_displace(DS_array, i, j, half_step, roughness):
     rand_val = random.uniform(0,1)
 
     return (roughness*rand_val + (1.0-roughness)*ave)
+

@@ -12,8 +12,23 @@ class FGPolicy:
         return "FGPolicy Object"
 
 
-    def get_pol_decision(self, FGFire_IgnEvent_object):
+    def get_pol_decision(self, FGPathway_object, location, forecast):
         """Makes suppression decisions for the given ignition event.
+        
+        PARAMETERS
+        ----------
+        FGPathway_object, location, forecast
+
+        FGPathway_object
+            The FireGirl pathway  object on which this fire is occuring
+
+        location
+            A coordinate pair describing the ignition location
+
+        forecast
+            The weather forecast associated with this ignition; a 2-d list produced
+            by a FGWeather.WeatherModel
+
         """
 
         pass
