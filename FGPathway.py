@@ -160,18 +160,5 @@ class YearRecord:
         return "A YearRecord object"
 
 
-class FireRecord:
-    """Records information about a single fire, within a single simulation year."""
 
-    def __init__(self):
-        self.day_history = [] #a list to hold each day's list of information, including weather
-
-        self.suppressed = False #was suppression applied to this fire?
-        self.suppression_cost = 0.0
-        self.acres_burned = 0
-        self.acres_crown_burned = 0
-
-    def __repr__(self):
-        """TODO"""
-        return "A FireRecord object"
 
