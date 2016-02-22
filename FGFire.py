@@ -129,13 +129,63 @@ class SpreadModel:
         return fr
 
 
+def calc_spread_rate(FGPathway_object, location, weather_today, supr_dec):
+    """Calculates the spread rate at this location, given the weather.
 
+    RETURNS
+    -------
+    spread_rate
+        float, in units of "acre-length"/day = 208ft/day 
+    """
+
+
+    #### OLD METHOD from FireGirl v1 ### 
+    def OLDcalcFireSpreadRate(wind, temp, fuel):
+        #This function calculates the logistic function that governs fire spread
+        #   rates. The parameters below are arbitrary, and give rise to the
+        #   shape I wanted for the model:
+
+        ### Variables from the old FireGirl v1 initialization ### ### ### ### 
+        #These are the parameters that give shape to the fire spreadrate calculation
+        # It is a logistic function that takes FireGirl's (windspeed + temperature)
+        # as it's input.
+        fire_param_inputscale = 10
+        fire_param_outputscale = 10
+        fire_param_zeroadjust = 15
+        fire_param_smoothness = 0.4
+        ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### 
+        
+        out_scale = fire_param_outputscale
+        in_scale = fire_param_inputscale
+        zero_adj = fire_param_zeroadjust
+        smooth = fire_param_smoothness
+        
+        exponent = (   -1 * smooth *     (   ((wind + temp + fuel) / in_scale) - zero_adj   )       )
+        fspread = out_scale / (1 + math.exp(exponent))
+        
+        #Enforcing minimum spread restrictions
+        if (wind + temp) < self.min_spread_windtemp:
+            fspread = 0
+        if fuel < self.min_spread_fuel:
+            fspread = 0
+        
+        return fspread
+
+    #using old model
+    wind = weather_today["Wind Speed"]
+    temp = weather_today["Temperature"]
+    fuel = FGPathway_object.get_surface_fuel(location)
+    sr = OLDcalcFireSpreadRate(wind, temp, fuel)
+
+    return sr
+
+    
 
 def calc_suppression_cost(fire_record):
     return 0.0
 
 def get_neighbor_ignitions(FGPathway_object, location, weather_today, supr_dec):
-    """
+    """ Calculates when (if ever) each neighbor will ignite.
 
     RETURNS
     (ignition_time, location_x, location_y)

@@ -52,9 +52,9 @@ class FGPathway:
 
 
         #primary data arrays, etc...
-        self.age_stand = np.zeros(self.size)
-        self.age_surface_fuels = np.zeros(self.size)
-        self.age_ladder_fuels = np.zeros(self.size)
+        self.start_year_stand = np.zeros(self.size)
+        self.start_year_surface_fuels = np.zeros(self.size)
+        self.start_year_ladder_fuels = np.zeros(self.size)
         self.site_productivity = np.zeros(self.size)
 
         self.year_history = [] # a list to hold all of this simulation's YearRecord objects
@@ -136,6 +136,22 @@ class FGPathway:
         """Uses the selected growth models to advance the vegetation on the landscape one year.
         """
         self.GrowthModel.simulate_growth(self)
+
+
+    ###########################
+    ### GETTERS and SETTERS ###
+    ###########################
+    def get_surface_fuel(self, loc):
+        """Returns the surface fuel value for the given location"""
+
+        return self.current_year - self.start_year_surface_fuels[loc[0], loc[1]]
+
+    def get_ladder_fuel(self, loc):
+        """Returns the surface fuel value for the given location"""
+
+        return self.current_year - self.start_year_ladder_fuels[loc[0], loc[1]]
+
+
 
 
 
