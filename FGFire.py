@@ -1,6 +1,8 @@
 import random, Queue
 import numpy as np
 
+USING_8_ANGLE_WIND = True
+
 class SpreadModel:
 
     def __init__(self):
@@ -84,11 +86,12 @@ class SpreadModel:
         #start the loop, and continue while there's anything queued, or until time expires
         while (current_time < max_time) and not (pq.empty()):
             #get the next queue item
-            current_cell = pq.get()
-            loc = (current_cell[1], current_cell[2])
+            current_ign = pq.get()
+            loc = (current_ign[1], current_ign[2])
 
-            #increment current time to this cell's ignition time
-            current_time = current_cell[0]
+            #increment current time to this cell's ignition time. This can allow a single
+            # ignition to go beyond the max time.
+            current_time = current_ign[0]
             #adjust day, if needed
             if current_time - current_day >= 1.0:
                 current_day += 1
@@ -188,8 +191,37 @@ def get_neighbor_ignitions(FGPathway_object, location, weather_today, supr_dec):
     """ Calculates when (if ever) each neighbor will ignite.
 
     RETURNS
-    (ignition_time, location_x, location_y)
+    A list of ignitions, [ (ignition_time, location_x, location_y), (...), ... , (...) ]
     """
+
+    #calculate the forward spreadrate given the wind speed and fuels
+    """TODO"""
+    sprd_rt = 1.0
+    
+    #get the length-to-width ratio associated with this spread rate
+    l_w_r = calc_l_w_ratio(sprd_rt)
+
+    #get the adjusted spread rates to the 8 neighbors
+    s_rts = []
+    if USING_8_ANGLE_WIND:
+        s_rts = ellipse_dists_poly(l_w_r) * sprd_rt
+        # we just need to multiply each element by the distance to the associated cell
+        #If wind is orthogonal, the distances are [1, 1.414, 1, 1.414, 1, 1.414, 1, 1.414]
+        #If wind is diagonal, the distances are [1.414, 1, 1.414, 1, 1.414, 1, 1.414, 1]
+        """TODO"""
+    else:
+        #TODO
+        """TODO THIS IS WRONG... we need the speed in the direction of the neighbors, not in
+        the eight-points away from foward..."""
+        thetas = np.asarray([0.25 * i for i in range(8) ]) * np.pi
+        thetas = thetas + weather_today["Wind Direction"]
+        s_rts = np.asarray([ellipse_distance(t, l_w_r) for t in thetas]) * sprd_rt
+
+    #use spread rates and distances to compute ignition times of each neighbor
+    # unless spread rate is 0 (or very small)
+
+    #create the return list 
+
     return []
 
 def get_crown_burn(FGPathway_object, loc, weather[current_day], sppr_dec):
@@ -200,6 +232,61 @@ def get_crown_burn(FGPathway_object, loc, weather[current_day], sppr_dec):
     """
 
     return False
+
+#given a spread rate, calculates the fire ellipes l/w ratio
+def calc_l_w_ratio(forward_spread_rate):
+    """TODO"""
+    #limiting to values between 1 and 10
+    if forward_spread_rate < 1:
+        return 1.0
+    else:
+        return min(forward_spread_rate, 10.0)
+
+
+#calculations for the distance from an ignition point to the edge of the fire ellipse
+def ellipse_dists_poly(l_w_ratio):
+    """
+    PARAMETERS
+    ----------
+    l_w_ratio: the length-to-width ratio of the ellipse. 
+        Needs to be a value no less than 1, and preferably less than 10
+    """
+    s = float(l_w_ratio)
+    forward = s
+    diag = 0.84297641*s + 0.0970053613
+    up = 0.0090215318*s**2 + 0.3691489777*s + 0.5191455988
+    back_diag = -0.0002197225*s**5 + 0.006687039*s**4 + -0.0788194038*s**3 + 0.4531392746*s**2 + -1.1664715313*s + 1.7741439645
+    back = (1.0/s)
+    return np.asarray([forward, diag, up, back_diag, back, back_diag, up, diag])
+
+#calculation of any angle, given a length-to-width ratio
+def ellipse_distance(theta, l_w_ratio):
+    """
+    PARAMETERS
+    ----------
+    theta: the angle away from "forward" at which the distance from the ignition to the edge should
+        be calculated.
+    l_w_ratio: the length-to-width ratio of the ellipse
+    
+    """
+    s = float(l_w_ratio)
+    
+    a = (s + 1.0/s)/2.0
+
+    b = 1.0
+    
+    x = a * np.cos(theta) + a - (1.0/s)
+
+    y = b * np.sin(theta)
+
+    dist = np.sqrt(x**2 + y**2)
+
+    return dist
+
+
+
+
+
 
 
 class FireRecord:
