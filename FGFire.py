@@ -55,10 +55,11 @@ class SpreadModel:
 
         # 1) is this fire going to spread at all?
         init_ignitions = get_neighbor_ignitions(FGPathway_object, loc, weather[current_day], sppr_dec)
-        if len(init_ignitions) > 0:
-            #if the spreadrate was zero, then there will be nothing in this list
-            #since there IS at least one item, there is some spread
+        for ign in init_ignitions:
+            #check to see if any of the spread rates are greater than zero.
+            if ign[0] > 0:
             spreading = True
+            break
 
         if not spreading:
             fr = FireRecord()
@@ -115,8 +116,10 @@ class SpreadModel:
             n_igns = get_neighbor_ignitions(FGPathway_object, loc, weather[current_day], sppr_dec)
 
             # d) add ignitions to the priority queue
-            for i in n_igns:
-                pq.put(i)
+            for ign in n_igns:
+                #if the spread rate is other than zero
+                if ign[0] > 0:
+                    pq.put(ign)
 
 
         #all done with the queue, so either we ran out of new cells, or the time expired
@@ -196,42 +199,51 @@ def get_neighbor_ignitions(FGPathway_object, location, weather_today, supr_dec):
 
     #calculate the forward spreadrate given the wind speed and fuels
     """TODO"""
-    sprd_rt = 1.0
+    sprd_rt = calc_spread_rate(FGPathway_object, location, weather_today, supr_dec)
+    #ENFORCE sprd_rt > 0
+    if sprd_rt <= 0:
+        return []
     
     #get the length-to-width ratio associated with this spread rate
     l_w_r = calc_l_w_ratio(sprd_rt)
 
     #get the adjusted spread rates to the 8 neighbors
     s_rts = []
+
+    #the angle to each cell
+    cell_angle = np.asarray([i * np.pi/4.0 for i in range(8)])
+
+    #the angle to each cell in terms of the ellipse's primary axis
+    ell_angle = cell_angle - np.radians(weather_today["Wind Direction"])
+
+    #the multiplier for spread rate, based on the ellipse
+    sp_rt_mult = []
     if USING_8_ANGLE_WIND:
-        s_rts = ellipse_dists_poly(l_w_r) * sprd_rt
-        # we just need to multiply each element by the distance to the associated cell
-        #If wind is orthogonal, the distances are [1, 1.414, 1, 1.414, 1, 1.414, 1, 1.414]
-        #If wind is diagonal, the distances are [1.414, 1, 1.414, 1, 1.414, 1, 1.414, 1]
-        """TODO"""
+        sp_rt_mult = np.asarray([ellipse_dist_poly(t, l_w_r) for t in ell_angle])
     else:
-        #TODO
-        """TODO THIS IS WRONG... we need the speed in the direction of the neighbors, not in
-        the eight-points away from foward..."""
-        thetas = np.asarray([0.25 * i for i in range(8) ]) * np.pi
-        thetas = thetas + weather_today["Wind Direction"]
-        s_rts = np.asarray([ellipse_distance(t, l_w_r) for t in thetas]) * sprd_rt
+        sp_rt_mult = np.asarray([ellipse_dist(t, l_w_r) for t in ell_angle])
 
-    #use spread rates and distances to compute ignition times of each neighbor
-    # unless spread rate is 0 (or very small)
+    #distance to each cell
+    distances = np.asarray([ 1.0, 1.4142, 1.0, 1.4142, 1.0, 1.4142, 1.0, 1.4142 ])
 
-    #create the return list 
+    #use spread rate, multipliers and distances to compute ignition times of each neighbor
+    spread_rates = sprd_rt * sp_rt_mult
+    #element-wise division
+    ignition_times = np.divide(distances,spread_rates)
 
-    return []
+    #create the return list
+    #Note, these are not parsed to get rid of infinite, 0, or other strange ignition times
+    final_list = [[ignition_times[0], location[0] + 1, location[1] + 0],
+                  [ignition_times[1], location[0] + 1, location[1] - 1],
+                  [ignition_times[2], location[0] + 0, location[1] - 1],
+                  [ignition_times[3], location[0] - 1, location[1] - 1],
+                  [ignition_times[4], location[0] - 1, location[1] + 0],
+                  [ignition_times[5], location[0] - 1, location[1] + 1],
+                  [ignition_times[6], location[0] + 0, location[1] + 1],
+                  [ignition_times[7], location[0] + 1, location[1] + 1]]
 
-def get_crown_burn(FGPathway_object, loc, weather[current_day], sppr_dec):
-    """
-    RETURNS
-    -------
-    boolean, True indicates that this cell has a burned crown, False not.
-    """
+    return final_list
 
-    return False
 
 #given a spread rate, calculates the fire ellipes l/w ratio
 def calc_l_w_ratio(forward_spread_rate):
@@ -244,23 +256,42 @@ def calc_l_w_ratio(forward_spread_rate):
 
 
 #calculations for the distance from an ignition point to the edge of the fire ellipse
-def ellipse_dists_poly(l_w_ratio):
+def ellipse_dist_poly(theta, l_w_ratio):
     """
+    Rounds theta to the closest increment of 45, and then computes the corresponding polynomial
+    model of that angle.
+
     PARAMETERS
     ----------
+    theta: the angle away from "forward" at which the distance from the ignition to the edge should
+        be calculated.
     l_w_ratio: the length-to-width ratio of the ellipse. 
         Needs to be a value no less than 1, and preferably less than 10
+
     """
     s = float(l_w_ratio)
-    forward = s
-    diag = 0.84297641*s + 0.0970053613
-    up = 0.0090215318*s**2 + 0.3691489777*s + 0.5191455988
-    back_diag = -0.0002197225*s**5 + 0.006687039*s**4 + -0.0788194038*s**3 + 0.4531392746*s**2 + -1.1664715313*s + 1.7741439645
-    back = (1.0/s)
-    return np.asarray([forward, diag, up, back_diag, back, back_diag, up, diag])
+    t = abs(int(4.0*theta/np.pi))
+    if (t == 0) or (t == 8):
+        #forward = s
+        return s
+    elif (t == 1) or (t == 7):
+        diag = 0.84297641*s + 0.0970053613
+        return diag
+    elif (t == 2) or (t == 6):
+        up = 0.0090215318*s**2 + 0.3691489777*s + 0.5191455988
+        return up
+    elif (t == 3) or (t == 5):
+        back_diag = -0.0002197225*s**5 + 0.006687039*s**4 + -0.0788194038*s**3 + 0.4531392746*s**2 + -1.1664715313*s + 1.7741439645
+        return back_diag
+    elif t == 4:
+        back = (1.0/s)
+        return back
+    else:
+        #hmmm... TODO
+        return 0.0
 
 #calculation of any angle, given a length-to-width ratio
-def ellipse_distance(theta, l_w_ratio):
+def ellipse_dist(theta, l_w_ratio):
     """
     PARAMETERS
     ----------
@@ -284,6 +315,14 @@ def ellipse_distance(theta, l_w_ratio):
     return dist
 
 
+def get_crown_burn(FGPathway_object, loc, weather_today, sppr_dec):
+    """
+    RETURNS
+    -------
+    boolean, True indicates that this cell has a burned crown, False not.
+    """
+
+    return False
 
 
 
