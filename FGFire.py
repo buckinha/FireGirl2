@@ -205,7 +205,7 @@ def get_neighbor_ignitions(FGPathway_object, location, weather_today, supr_dec):
         return []
     
     #get the length-to-width ratio associated with this spread rate
-    l_w_r = calc_l_w_ratio(sprd_rt)
+    l_w_r = calc_l_w_ratio(weather_today["Wind Speed"])
 
     #get the adjusted spread rates to the 8 neighbors
     s_rts = []
@@ -246,13 +246,48 @@ def get_neighbor_ignitions(FGPathway_object, location, weather_today, supr_dec):
 
 
 #given a spread rate, calculates the fire ellipes l/w ratio
-def calc_l_w_ratio(forward_spread_rate):
-    """TODO"""
+def calc_l_w_ratio(wind_speed):
+    """From  "Development and Structure of the Canadian Forest Fire Behavior Prediction System"
+    the equation used to compute the length-to-width ratio of the ellipse is:
+
+        l_to_w = 1.0 + 8.729*(1.0-math.exp(-0.03*w))**2.155
+
+    to nip off some computation time, I'm taking a linear approximation of this:
+
+        l_to_w_aprx = 1.10993 + 0.0878841*w
+
+    which has an R**2 fit value of 0.985 and a p-value for the regression of 4.6496e-77 
+
+    the average execution times are 720ns and 260ns, respectively.
+
+    The linear approximation will slightly over-estimate length-to-width for winds between 0 and 22kph
+    and slightly overestimate afteward, until windspeeds are over ~80kph.
+
+    PARAMETERS
+    ----------
+    wind_speed: wind speed in kph
+
+    RETURNS
+    -------
+    float, indicating the length-to-width ratio of the fire footprint ellipse.
+    """
+
     #limiting to values between 1 and 10
-    if forward_spread_rate < 1:
+    if wind_speed < 0.0
         return 1.0
     else:
-        return min(forward_spread_rate, 10.0)
+        return 1.10993 + 0.0878841*wind_speed
+
+        #to convert mph to kph, multiply by 1.60934449789. This changes the equation to
+        #return 1.10993 + 0.0878841*(1.60934449789*wind_speed)
+        # or, simplified:
+        #return 1.10993 + 0.14143579278*wind_speed
+
+        #to convert m/s to kph, multiply by 3.6. This changes the equation to
+        #return 1.10993 + 0.0878841*(3.6*wind_speed)
+        # or, simplified:
+        #return 1.10993 + 0.31638276*wind_speed
+
 
 
 #calculations for the distance from an ignition point to the edge of the fire ellipse
