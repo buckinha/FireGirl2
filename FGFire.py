@@ -1,4 +1,4 @@
-import random, Queue
+import random, Queue, math
 import numpy as np
 
 USING_8_ANGLE_WIND = True
@@ -291,8 +291,9 @@ def calc_l_w_ratio(wind_speed):
 
 
 #calculations for the distance from an ignition point to the edge of the fire ellipse
-def ellipse_dist_poly(theta, l_w_ratio):
-    """
+def ellipse_dist_poly(theta, s):
+    """This calculation takes an s value which is in proportion to the value of b being 1
+
     Rounds theta to the closest increment of 45, and then computes the corresponding polynomial
     model of that angle.
 
@@ -304,7 +305,7 @@ def ellipse_dist_poly(theta, l_w_ratio):
         Needs to be a value no less than 1, and preferably less than 10
 
     """
-    s = float(l_w_ratio)
+    s = float(s)
     t = abs(int(4.0*theta/np.pi))
     if (t == 0) or (t == 8):
         #forward = s
@@ -326,28 +327,66 @@ def ellipse_dist_poly(theta, l_w_ratio):
         return 0.0
 
 #calculation of any angle, given a length-to-width ratio
-def ellipse_dist(theta, l_w_ratio):
-    """
+def ellipse_dist(theta, s):
+    """This calculation takes an s value which is in proportion to the value of b being 1
+
     PARAMETERS
     ----------
     theta: the angle away from "forward" at which the distance from the ignition to the edge should
         be calculated.
-    l_w_ratio: the length-to-width ratio of the ellipse
+    s: the proportional forward spread rate of the fire when b = 1
     
     """
-    s = float(l_w_ratio)
+    s = float(s)
     
-    a = (s + 1.0/s)/2.0
+    a = (s + 1.0/s) * 0.5
 
     b = 1.0
     
-    x = a * np.cos(theta) + a - (1.0/s)
+    x = a * math.cos(theta) + a - (1.0/s)
 
-    y = b * np.sin(theta)
+    y = b * math.sin(theta)
 
-    dist = np.sqrt(x**2 + y**2)
+    dist = math.sqrt(x**2 + y**2)
 
     return dist
+
+def dist_ratio(theta, lwr):
+    """ The ratio of the distance along angle theta to the foreward spreading distance
+
+    PARAMETERS
+    ----------
+    theta: the angle away from "forward" in radians
+    lwr: the length-to-width ratio of the ellipse
+
+    RETURNS
+    -------
+    float: the ratio of the distances
+
+    """
+
+    """Clearer calculations:
+    #set b=1, which makes a = lwr
+    a = lwr
+    b = 1.0
+
+    #calculate f
+    f = math.sqrt(a**2 - b**2)
+
+    #get the distance from the focus to the edge, along angle theta
+    dist = math.sqrt(  (a * math.cos(theta) + f)**2   + (b*math.sin(theta))**2  )
+
+    #calculate the forward spread rate "distance" and compute the ratio
+    s = a + f
+    ratio = dist / s
+
+    return ratio
+    """
+    #slightly faster version:
+    # (PASSED RANDOM TESTING for being the same calculation)
+    f = math.sqrt(lwr**2 - 1.0)
+    dist = math.sqrt(  (lwr * math.cos(theta) + f)**2   + (math.sin(theta))**2  )
+    return dist / (lwr + f)
 
 
 def get_crown_burn(FGPathway_object, loc, weather_today, sppr_dec):
