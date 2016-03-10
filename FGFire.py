@@ -207,10 +207,8 @@ def get_neighbor_ignitions(FGPathway_object, location, weather_today, supr_dec):
     #get the length-to-width ratio associated with this spread rate
     l_w_r = calc_l_w_ratio(weather_today["Wind Speed"])
 
-    #get the adjusted spread rates to the 8 neighbors
-    s_rts = []
-
     #the angle to each cell
+    #TODO: these don't need to be calculated every time. Pre-compute them
     cell_angle = np.asarray([i * np.pi/4.0 for i in range(8)])
 
     #the angle to each cell in terms of the ellipse's primary axis
@@ -221,7 +219,7 @@ def get_neighbor_ignitions(FGPathway_object, location, weather_today, supr_dec):
     if USING_8_ANGLE_WIND:
         sp_rt_mult = np.asarray([ellipse_dist_poly(t, l_w_r) for t in ell_angle])
     else:
-        sp_rt_mult = np.asarray([ellipse_dist(t, l_w_r) for t in ell_angle])
+        sp_rt_mult = np.asarray([ellipse_dist_ratio(t, l_w_r) for t in ell_angle])
 
     #distance to each cell
     distances = np.asarray([ 1.0, 1.4142, 1.0, 1.4142, 1.0, 1.4142, 1.0, 1.4142 ])
@@ -351,7 +349,7 @@ def ellipse_dist(theta, s):
 
     return dist
 
-def dist_ratio(theta, lwr):
+def ellipse_dist_ratio(theta, lwr):
     """ The ratio of the distance along angle theta to the foreward spreading distance
 
     PARAMETERS
