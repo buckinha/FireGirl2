@@ -217,7 +217,7 @@ def get_neighbor_ignitions(FGPathway_object, location, weather_today, supr_dec):
     #the multiplier for spread rate, based on the ellipse
     sp_rt_mult = []
     if USING_8_ANGLE_WIND:
-        sp_rt_mult = np.asarray([ellipse_dist_poly(t, l_w_r) for t in ell_angle])
+        sp_rt_mult = np.asarray([ellipse_dist_ratio_poly(t, l_w_r) for t in ell_angle])
     else:
         sp_rt_mult = np.asarray([ellipse_dist_ratio(t, l_w_r) for t in ell_angle])
 
@@ -289,9 +289,8 @@ def calc_l_w_ratio(wind_speed):
 
 
 #calculations for the distance from an ignition point to the edge of the fire ellipse
-def ellipse_dist_poly(theta, s):
-    """This calculation takes an s value which is in proportion to the value of b being 1
-
+def ellipse_dist_ratio_poly(theta, lwr):
+    """
     Rounds theta to the closest increment of 45, and then computes the corresponding polynomial
     model of that angle.
 
@@ -303,51 +302,51 @@ def ellipse_dist_poly(theta, s):
         Needs to be a value no less than 1, and preferably less than 10
 
     """
+
+    """
+
+    Params for FWD fit
+    array([  9.99999989e-01,   8.10852195e+07,   1.95444928e+00, 7.96543026e-02])
+    this one is un-needed, since it's approximation y = 1
+
+    Params for FWD_DIAG fit
+    array([-0.00650758,  0.57761793,  0.35369061,  1.87834152])
+
+    Params for ORTHOG fit
+    array([-0.02014989,  5.7007518 , -0.83345416,  0.97711175])
+
+    Params for BCK_DIAG fit
+    array([-0.01608705,  9.44079769, -0.92071169,  0.89094967])
+
+    Params for BCK fit
+    array([ -0.01451187,  10.92674105,  -0.93514904,   0.87868538])
+    """
+
+    #fitting function
+    def f(x,params):
+        return params[0] + (1.0 / (params[1]*(x+params[2])**params[3]))
+
     s = float(s)
     t = abs(int(4.0*theta/np.pi))
     if (t == 0) or (t == 8):
-        #forward = s
-        return s
+        return 1.0
     elif (t == 1) or (t == 7):
-        diag = 0.84297641*s + 0.0970053613
-        return diag
+        #forward diagonal
+        return f([-0.00650758,  0.57761793,  0.35369061,  1.87834152])
     elif (t == 2) or (t == 6):
-        up = 0.0090215318*s**2 + 0.3691489777*s + 0.5191455988
-        return up
+        #orthogonal
+        return f([-0.02014989,  5.7007518 , -0.83345416,  0.97711175])
     elif (t == 3) or (t == 5):
-        back_diag = -0.0002197225*s**5 + 0.006687039*s**4 + -0.0788194038*s**3 + 0.4531392746*s**2 + -1.1664715313*s + 1.7741439645
-        return back_diag
+        #backward diagonal
+        return f([-0.01608705,  9.44079769, -0.92071169,  0.89094967])
     elif t == 4:
-        back = (1.0/s)
-        return back
+        #backward
+        return f([ -0.01451187,  10.92674105,  -0.93514904,   0.87868538])
     else:
         #hmmm... TODO
         return 0.0
 
-#calculation of any angle, given a length-to-width ratio
-def ellipse_dist(theta, s):
-    """This calculation takes an s value which is in proportion to the value of b being 1
 
-    PARAMETERS
-    ----------
-    theta: the angle away from "forward" at which the distance from the ignition to the edge should
-        be calculated.
-    s: the proportional forward spread rate of the fire when b = 1
-    
-    """
-    s = float(s)
-    
-    a = (s + 1.0/s) * 0.5
-
-    b = 1.0
-    
-    x = a * math.cos(theta) + a - (1.0/s)
-
-    y = b * math.sin(theta)
-
-    dist = math.sqrt(x**2 + y**2)
-
-    return dist
 
 def ellipse_dist_ratio(theta, lwr):
     """ The ratio of the distance along angle theta to the foreward spreading distance
@@ -363,28 +362,33 @@ def ellipse_dist_ratio(theta, lwr):
 
     """
 
-    """Clearer calculations:
-    #set b=1, which makes a = lwr
-    a = lwr
-    b = 1.0
-
-    #calculate f
-    f = math.sqrt(a**2 - b**2)
-
-    #get the distance from the focus to the edge, along angle theta
-    dist = math.sqrt(  (a * math.cos(theta) + f)**2   + (b*math.sin(theta))**2  )
-
-    #calculate the forward spread rate "distance" and compute the ratio
-    s = a + f
-    ratio = dist / s
-
-    return ratio
+    #clear form of the code
     """
-    #slightly faster version:
-    # (PASSED RANDOM TESTING for being the same calculation)
-    f = math.sqrt(lwr**2 - 1.0)
-    dist = math.sqrt(  (lwr * math.cos(theta) + f)**2   + (math.sin(theta))**2  )
-    return dist / (lwr + f)
+    def focal_distance(theta, lwr):
+        a = lwr
+        b = 1.0
+
+        #eccentricity
+        # e = math.sqrt( (a**2 - b**2)/a**2)
+        e = math.sqrt( (a**2 - 1.0) / a**2)
+
+        dist_on_angle = a * (1.0 - e**2) / (1.0 - e*math.cos(theta))
+
+        #when theta = 0, the dist formula becomes:
+        #dist_forward = a * (1.0 - e**2) / (1.0 - e*math.cos(0))
+        #dist_forward = a * (1.0 - e**2) / (1.0 - e*1)
+        dist_forward  = a * (1.0 - e**2) / (1.0 - e)
+
+        return dist_on_angle / dist_forward
+
+    """
+    #TESTED 3-10-16: This function evaluates identically to the above
+    e = math.sqrt( (lwr**2 - 1.0) / lwr**2)
+    e2 = (1.0 - e**2)
+    dist_on_angle = lwr * e2 / (1.0 - e*math.cos(theta))
+    dist_forward  = lwr * e2 / (1.0 - e)
+
+    return dist_on_angle / dist_forward
 
 
 def get_crown_burn(FGPathway_object, loc, weather_today, sppr_dec):
