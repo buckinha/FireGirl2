@@ -143,13 +143,14 @@ class FGPathway:
     ###########################
     def get_surface_fuel(self, loc):
         """Returns the surface fuel value for the given location"""
-
-        return self.current_year - self.start_year_surface_fuels[loc[0], loc[1]]
+        s_fuel_age = self.current_year - self.start_year_surface_fuels[loc[0], loc[1]]
+        return self.GrowthModel.get_surface_fuel(age=s_fuel_age,species="DEFAULT")
 
     def get_ladder_fuel(self, loc):
         """Returns the surface fuel value for the given location"""
 
-        return self.current_year - self.start_year_ladder_fuels[loc[0], loc[1]]
+        l_fuel_age = self.current_year - self.start_year_ladder_fuels[loc[0], loc[1]]
+        return self.GrowthModel.get_ladder_fuel(age=l_fuel_age,species="DEFAULT")
 
 
 
