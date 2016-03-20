@@ -6,7 +6,8 @@ USING_8_ANGLE_WIND = True
 class SpreadModel:
 
     def __init__(self):
-        pass
+        #setting for whether or not returned FireRecord objects should save their individual burn maps
+        self.SAVE_BURN_MAPS = True
 
     def __repr__(self):
         """TODO"""
@@ -17,6 +18,29 @@ class SpreadModel:
         """
         Takes a FGPathway Object, and information about an ignition, and simulates a fire.
 
+        Surface fuels are always considered continuous, and effectively constant. This means
+        that the primary differences in fire outcomes will depend on ladder fuels, and weather.
+
+        Early Growth:
+        In the first 5 years, Pinus ponderosa seedlings are susceptibel to fire, so fires that
+        occur within 5 years of stand initiation will replace the stand
+
+        Standing Dead Trees:
+        After a stand replacing fire in which salvage logging was not done (or other treatments),
+        there are a lot of standing, dead trees. For a few years, they stay standing, and have
+        little effect on fire. After 5 years, and up to about 20 years, they begin falling, and 
+        greatly increase the ladder fuels in the stand. After 20 years, if there hasn't been any
+        fires, these old fuels begin decaying and will not effect the stand as much.
+
+        Fire Exclusion and Understory Growth:
+        Without surface fires underneath growing Pinus ponderosa stands, the understory will grow
+        and become a ladder fuel threat. With "historical" fire intervals falling between 1-30 years, 
+        we'll assume that it is only AFTER about 25 years or so that the understory vegetation
+        really starts representing a serious crown-fire threat.
+
+
+
+        OTHER NOTES:
         Modifies FGPathway in place.
 
         PARAMETERS
@@ -108,9 +132,11 @@ class SpreadModel:
             cells_burned += 1
 
             # b) check for crown fire, and if necessary, update the crown burn map
+            crowned = False
             if get_crown_burn(FGPathway_object, loc, weather[current_day], sppr_dec):
                 crown_burn_map[loc[0], loc[1]] = 1
                 cells_crowned += 1
+                crowned = True
             
             # c) get the neighbor ignitions
             n_igns = get_neighbor_ignitions(FGPathway_object, loc, weather[current_day], sppr_dec)
@@ -121,6 +147,9 @@ class SpreadModel:
                 if ign[0] > 0:
                     pq.put(ign)
 
+            # e) update the pathway's data to reflect what happened
+            update_cell(FGPathway_object, loc, burned=True, crowned=crowned)
+
 
         #all done with the queue, so either we ran out of new cells, or the time expired
         fr = FireRecord()
@@ -129,6 +158,11 @@ class SpreadModel:
         fr.weather = weather[:]
         fr.suppressed = sppr_dec
         fr.ignition_location = location[:]
+
+        #save the maps, if desired
+        if self.SAVE_BURN_MAPS:
+            fr.burn_map = burn_map
+            fr.crown_burn_map = crown_burn_map
 
         fr.suppression_cost = calc_suppression_cost(fr)
 
@@ -185,8 +219,6 @@ def calc_spread_rate(FGPathway_object, location, weather_today, supr_dec):
 
     return sr
 
-    
-
 def calc_suppression_cost(fire_record):
     return 0.0
 
@@ -242,7 +274,6 @@ def get_neighbor_ignitions(FGPathway_object, location, weather_today, supr_dec):
 
     return final_list
 
-
 #given a spread rate, calculates the fire ellipes l/w ratio
 def calc_l_w_ratio(wind_speed):
     """From  "Development and Structure of the Canadian Forest Fire Behavior Prediction System"
@@ -285,8 +316,6 @@ def calc_l_w_ratio(wind_speed):
         #return 1.10993 + 0.0878841*(3.6*wind_speed)
         # or, simplified:
         #return 1.10993 + 0.31638276*wind_speed
-
-
 
 #calculations for the distance from an ignition point to the edge of the fire ellipse
 def ellipse_dist_ratio_poly(theta, lwr):
@@ -346,8 +375,6 @@ def ellipse_dist_ratio_poly(theta, lwr):
         #hmmm... TODO
         return 0.0
 
-
-
 def ellipse_dist_ratio(theta, lwr):
     """ The ratio of the distance along angle theta to the foreward spreading distance
 
@@ -390,7 +417,6 @@ def ellipse_dist_ratio(theta, lwr):
 
     return dist_on_angle / dist_forward
 
-
 def get_crown_burn(FGPathway_object, loc, weather_today, sppr_dec):
     """
     RETURNS
@@ -400,7 +426,14 @@ def get_crown_burn(FGPathway_object, loc, weather_today, sppr_dec):
 
     return False
 
-
+#updates the data in a FireGirl Pathway object to reflect a burn
+def update_cell(FGPathway_object, loc, burned, crowned):
+    pw = FGPathway_object
+    if burned:
+        pw.surf_fire_yr[loc[0]][loc[1]] = pw.current_year
+    if crowned:
+        pw.stand_rplc_fire_yr[loc[0]][loc[1]] = pw.current_year
+        pw.stand_init_yr[loc[0]][loc[1]] = pw.current_year
 
 
 
@@ -414,6 +447,9 @@ class FireRecord:
         self.suppression_cost = 0.0
         self.acres_burned = 0
         self.acres_crown_burned = 0
+
+        self.burn_map = []
+        self.crown_burn_map = []
 
     def __repr__(self):
         """TODO"""

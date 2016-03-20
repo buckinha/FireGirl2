@@ -51,15 +51,23 @@ class FGPathway:
             self.size = (landscape_size[0], landscape_size[1])
 
 
-        #primary data arrays, etc...
-        self.start_year_stand = np.zeros(self.size)
-        self.start_year_surface_fuels = np.zeros(self.size)
-        self.start_year_ladder_fuels = np.zeros(self.size)
-        self.site_productivity = np.zeros(self.size)
-
+        #important pathway values
         self.year_history = [] # a list to hold all of this simulation's YearRecord objects
         self.current_year = 0
         self.primary_random_seed = random_seed
+
+
+        #Primary data arrays, etc...
+        #   site index: this remains constant
+        self.site_index = DS.diamond_square(self.size, min_height=0, max_height=100, roughness=0.5, random_seed=random_seed, AS_NP_ARRAY=True).astype(int)
+        #   each cell's stand initiation year: each one started in the last 100 years or so
+        self.stand_init_yr = DS.diamond_square(self.size, min_height=-100, max_height=0, roughness=0.75, random_seed=random_seed+1, AS_NP_ARRAY=True)
+        #   the last year in which each cell experienced a stand-replacing fire, leaving dead trees standing
+        self.stand_rplc_fire_yr = DS.diamond_square(self.size, min_height=-100, max_height=0, roughness=0.75, random_seed=random_seed+2, AS_NP_ARRAY=True)
+        #   the last year in which there was a surface fire
+        self.surf_fire_yr = DS.diamond_square(self.size, min_height=-100, max_height=0, roughness=0.75, random_seed=random_seed+2, AS_NP_ARRAY=True)
+
+        
 
 
     #adding a custom __repr__ method, esp. for use with ipython's '?' command
@@ -82,8 +90,13 @@ class FGPathway:
         """
 
         for y in range(years):
-            self.do_fires()
-            self.do_harvest()
+            #new YearRecord object for this year
+            yr = YearRecord()
+
+            #simulate and record
+            #note: the do___ methods will also update the pathway object
+            yr.update_fire( self.do_fires() )
+            yr.update_harvest( self.do_harvest() )
             self.do_fuel_treatments()
             self.do_growth()
             self.current_year += 1
@@ -104,6 +117,9 @@ class FGPathway:
         #generate ignition locations
         locations = [ (random.uniform(self.size[0], self.size[1])) for i in range(len(weathers))]
 
+        #set up fire record object list
+        fire_records = [None] * len(weathers)
+
         ### FOR EACH IGNITION THIS YEAR:
         for i in range(len(weathers)):
             #we can't get a list of suppression decisions all at once, because each fire
@@ -113,23 +129,27 @@ class FGPathway:
             ##########################################################
             # 2) Use the current suppression policy to make choices
             ##########################################################
-            supr_decision = self.Policy.get_pol_decision(self, locations[i], forecasts[i])
+            supr_decision = self.Policy.get_pol_decisions(self, locations[i], forecasts[i])
 
             ##########################################################
             # 3) Simulate each fire (and potential suppression)
             ##########################################################
-            self.FireModel.simulate_fire(self, locations[i], weathers[i], supr_decision)
+            fire_records[i] = self.FireModel.simulate_fire(self, locations[i], weathers[i], supr_decision) 
+
+        return fire_records
 
 
     def do_harvest(self):
         """Uses the selected logging model to harvest one year's worth of timber.
         """
-        self.HarvestModel.simulate_harvest(self)
+        summary_vals = self.HarvestModel.simulate_harvest(self, method="selection")
+        return summary_vals
 
 
     def do_fuel_treatments(self):
         """Uses the selected fuel treatment model to simulate treatments for one year."""
-        self.TreatmentModel.simulate_treatments(self)
+        summary_vals = self.TreatmentModel.simulate_treatments(self)
+        return summary_vals
 
 
     def do_growth(self):
@@ -167,6 +187,7 @@ class YearRecord:
         self.suppression_costs = 0.0
         self.acres_burned = 0
         self.acres_crown_burned = 0
+        self.fire_records = []
 
         self.harvest_revenue = 0.0
         self.acres_harvested = 0
@@ -177,5 +198,19 @@ class YearRecord:
         return "A YearRecord object"
 
 
+    def update_harvest(values_from_harvest_model):
+        """
+        FGHarvest.HarvestModel.simulate_harvest() method returns a tuple: (acres_cut, revenue)
+        """
+        self.acres_harvested = values_from_harvest_model[0]
+        self.harvest_revenue = values_from_harvest_model[1]
 
 
+    def update_fire(fire_records):
+        """Takes a list of fire records and updates values accordingly"""
+        self.fire_records = fire_records
+        for fr in fire_records:
+            self.fire_count += 1
+            self.suppression_costs += fr.suppression_cost
+            self.acres_burned += fr.acres_burned
+            self.acres_crown_burned += fr.acres_crown_burned

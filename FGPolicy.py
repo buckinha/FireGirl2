@@ -12,27 +12,41 @@ class FGPolicy:
         return "FGPolicy Object"
 
 
-    def get_pol_decision(self, FGPathway_object, location, forecast):
-        """Makes suppression decisions for the given ignition event.
+    def get_pol_decisions(self, FGPathway_object, locations, forecasts):
+        """Makes suppression decisions for the given ignition event or events.
         
         PARAMETERS
         ----------
-        FGPathway_object, location, forecast
+        FGPathway_object, locations, forecasts
 
         FGPathway_object
             The FireGirl pathway  object on which this fire is occuring
 
-        location
-            A coordinate pair describing the ignition location
+        locations
+            A list of coordinate pairs describing each ignition location
 
-        forecast
-            The weather forecast associated with this ignition; a 2-d list produced
-            by a FGWeather.WeatherModel
+        forecasts
+            The weather forecasts associated with each ignition; each one is a
+             2-d list produced by a FGWeather.WeatherModel
 
         """
 
-        pass
+        #check to see if only a single ignition has been passed in, rather than a list of them
+        if hasattr(locations[0], '__iter__'):
+            #this is a list of locations
+            pass
+        else:
+            #the sub item is NOT iterable, so it is probably a single coordinate value, so:
+            locations = [locations]
+            forecasts = [forecasts]
+
+        decisions = [ get_decision(FGPathway_object, loc, fc) for loc, fc in zip(locations, forecasts) ]
+
+        return decisions
 
 
-
-
+    def get_decision(FGPathway_object, location, forecast):
+        """Makes a single suppression decision for a given ignition event.
+        """
+        #TODO
+        return False
