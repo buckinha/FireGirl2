@@ -1,5 +1,5 @@
 import FGFire, FGHarvest, FGTreatments, FGGrowth, FGPolicy, FGWeather
-import DiamondSquare as DS
+import utils.DiamondSquare as DS
 import numpy as np
 #import matplotlib.pyplot as plt
 
@@ -59,13 +59,13 @@ class FGPathway:
 
         #Primary data arrays, etc...
         #   site index: this remains constant
-        self.site_index = DS.diamond_square(self.size, min_height=0, max_height=100, roughness=0.5, random_seed=random_seed, AS_NP_ARRAY=True).astype(int)
+        self.site_index = DS.diamond_square(self.size, min_height=0, max_height=100, roughness=0.5, random_seed=primary_random_seed, AS_NP_ARRAY=True).astype(int)
         #   each cell's stand initiation year: each one started in the last 100 years or so
-        self.stand_init_yr = DS.diamond_square(self.size, min_height=-100, max_height=0, roughness=0.75, random_seed=random_seed+1, AS_NP_ARRAY=True)
+        self.stand_init_yr = DS.diamond_square(self.size, min_height=-100, max_height=0, roughness=0.75, random_seed=primary_random_seed+1, AS_NP_ARRAY=True)
         #   the last year in which each cell experienced a stand-replacing fire, leaving dead trees standing
-        self.stand_rplc_fire_yr = DS.diamond_square(self.size, min_height=-100, max_height=0, roughness=0.75, random_seed=random_seed+2, AS_NP_ARRAY=True)
+        self.stand_rplc_fire_yr = DS.diamond_square(self.size, min_height=-100, max_height=0, roughness=0.75, random_seed=primary_random_seed+2, AS_NP_ARRAY=True)
         #   the last year in which there was a surface fire
-        self.surf_fire_yr = DS.diamond_square(self.size, min_height=-100, max_height=0, roughness=0.75, random_seed=random_seed+2, AS_NP_ARRAY=True)
+        self.surf_fire_yr = DS.diamond_square(self.size, min_height=-100, max_height=0, roughness=0.75, random_seed=primary_random_seed+2, AS_NP_ARRAY=True)
 
         
 
@@ -89,12 +89,12 @@ class FGPathway:
         None
         """
 
-        for y in range(years):
-            #new YearRecord object for this year
-            yr = YearRecord()
+        #creat new year records for this simulation
+        year_records = [ YearRecord(i) for i in range(self.year, self.year+years) ]
 
+        for yr in year_records:
             #simulate and record
-            #note: the do___ methods will also update the pathway object
+            #note: the do___ methods will also update the pathway object itself
             yr.update_fire( self.do_fires() )
             yr.update_harvest( self.do_harvest() )
             self.do_fuel_treatments()
@@ -111,7 +111,7 @@ class FGPathway:
         # 1) Find out how many ignitions there are this year,
         #      and their associated weather streams/forecasts
         ##########################################################
-        weather_seed = self.primary_random_seed + self.current_year
+        weather_seed = self.primary_random_seed + self.current_year + 2222222
         weathers, forecasts = self.WeatherModel.get_new_fires(random_seed=weather_seed)
 
         #generate ignition locations
@@ -155,7 +155,8 @@ class FGPathway:
     def do_growth(self):
         """Uses the selected growth models to advance the vegetation on the landscape one year.
         """
-        self.GrowthModel.simulate_growth(self)
+        pass
+        #self.GrowthModel.simulate_growth(self)
 
 
     ###########################
@@ -163,24 +164,37 @@ class FGPathway:
     ###########################
     def get_surface_fuel(self, loc):
         """Returns the surface fuel value for the given location"""
-        s_fuel_age = self.current_year - self.start_year_surface_fuels[loc[0], loc[1]]
-        return self.GrowthModel.get_surface_fuel(age=s_fuel_age,species="DEFAULT")
+        surf_fuel_age = self.current_year - self.start_year_surface_fuels[loc[0], loc[1]]
+        return self.GrowthModel.get_surface_fuel(age=surf_fuel_age,species="DEFAULT")
 
     def get_ladder_fuel(self, loc):
         """Returns the surface fuel value for the given location"""
 
-        l_fuel_age = self.current_year - self.start_year_ladder_fuels[loc[0], loc[1]]
-        return self.GrowthModel.get_ladder_fuel(age=l_fuel_age,species="DEFAULT")
+        ladder_fuel_age = self.current_year - self.start_year_ladder_fuels[loc[0], loc[1]]
+        return self.GrowthModel.get_ladder_fuel(age=ladder_fuel_age,species="DEFAULT")
 
 
 
 
 
 class YearRecord:
-    """Records information about a single simulation year."""
+    """Records information about a single simulation year.
 
-    def __init__(self):
-        self.fire_history = [] #a list to hold any FireRecord objects associated with this year
+    INSTANTIATION PARAMETERS
+    year: an integer year which this YearRecord object is holding values for
+    path: OPTIONAL. When multiple runs are done on the same landscape (Monte
+        Carlo sims, for example), path_number can hold a value to identify 
+        which run this record belongs to.
+
+    """
+
+    def __init__(self, year, path_number=-1):
+        #the current year, which this object records
+        self.year = year
+        self.path = path_number
+
+        #a list to hold any FireRecord objects associated with this year
+        self.fire_history = [] 
 
         #yearly sums, averages, etc...
         self.fire_count = 0

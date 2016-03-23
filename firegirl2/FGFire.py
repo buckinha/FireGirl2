@@ -22,7 +22,7 @@ class SpreadModel:
         that the primary differences in fire outcomes will depend on ladder fuels, and weather.
 
         Early Growth:
-        In the first 5 years, Pinus ponderosa seedlings are susceptibel to fire, so fires that
+        In the first 5 years, Pinus ponderosa seedlings are susceptible to fire, so fires that
         occur within 5 years of stand initiation will replace the stand
 
         Standing Dead Trees:
