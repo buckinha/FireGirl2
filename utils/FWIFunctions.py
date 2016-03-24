@@ -72,6 +72,11 @@ def FFMC(TEMP,RH,WIND,RAIN,FFMCPrev):
     RAIN is the 24-hour accumulated rainfall in mm, calculated at 12:00 LST
     FFMCPrev is the previous day's FFMC
 
+    RETURNS
+    -------
+    Non-negative Values, generally between 0 and 100 but can be higher
+    Higher fine fuel moisture codes (FFMC) indicate MORE/WORSE drought
+
     USAGE:
     FFMC(17,42,25,0,85) = 87.692980092774448'''
 
@@ -134,6 +139,11 @@ def DMC(TEMP,RH,RAIN,DMCPrev,LAT,MONTH):
     Lat is the latitude in decimal degrees of the location for which calculations are being made
     Month is the month of Year (1..12) for the current day's calculations.
 
+    RETURNS
+    -------
+    Non-negative Values, generally between 0 and 100 but can be higher
+    Higher duff moisture codes (DMC) indicate MORE/WORSE drought
+
     USAGE:
     DMC(17,42,0,6,45.98,4) = 8.5450511359999997'''
 
@@ -172,12 +182,22 @@ def DMC(TEMP,RH,RAIN,DMCPrev,LAT,MONTH):
 
 
 def DC(TEMP,RAIN,DCPrev,LAT,MONTH):
-    '''Calculates today's Drought Code Parameters:
+    '''Calculates today's Drought Code
+
+    PARAMTERS
+    ---------
     TEMP is the 12:00 LST temperature in degrees celsius
     RAIN is the 24-hour accumulated rainfall in mm, calculated at 12:00 LST
     DCPrev is the previous day's DC
     LAT is the latitude in decimal degrees of the location for which calculations are being made
     MONTH is the month of Year (1..12) for the current day's calculations.
+
+    RETURNS
+    -------
+    Non-negative values, generally between 0 and 100, but can be higher.
+    Higher drought codes (DC) indicate MORE/WORSE drought
+
+    USAGE:
     DC(17,0,15,45.98,4) = 19.013999999999999'''
 
     if RAIN > 2.8:
@@ -214,8 +234,19 @@ def ISI(WIND,FFMC):
     WIND is the 12:00 LST wind speed in kph
     FFMC is the current day's FFMC
 
+    RETURNS
+    -------
+    Non-negative values reflecting spread rate (Units?)
+    Higher ISI means faster fire spread
+
     USAGE:
     ISI(25,87.692980092774448) = 10.853661073655068'''
+
+    #HKB Edit: FFMC values higher than 100 are possible from the FFMC() function, but
+    # result in negative values for 'm' which cannot be raised to a fractional power in 
+    # the calculation for 'fF'
+    if FFMC > 100: FFMC = 100
+    #########################
 
     fWIND = math.exp(0.05039 * WIND)
 
@@ -237,6 +268,11 @@ def BUI(DMC,DC):
     USAGE:
     BUI(8.5450511359999997,19.013999999999999) = 8.4904265358371838'''
 
+    #HKB Edit: Float-divisions by zero can occur if these values are non-positive
+    if DMC <= 0.0: DMC = 0.000001
+    if DC <= 0.0: DC = 0.000001
+    ###########################
+
     if DMC <= 0.4 * DC:
         U = 0.8 * DMC * DC / (DMC + 0.4 * DC)
     else:
@@ -253,6 +289,11 @@ def FWI(ISI, BUI):
     ----------
     ISI is the current day's ISI
     BUI is the current day's BUI
+
+    RETURNS
+    -------
+    Non-negative values
+    Higher fire weather indices (FWI) indicate faster fire spread (units?)
 
     USAGE:
     FWI(10.853661073655068,8.4904265358371838) = 10.096371392382368'''
@@ -323,6 +364,10 @@ def calcFWI(MONTH,TEMP,RH,WIND,RAIN,FFMCPrev,DMCPrev,DCPrev,LAT):
     DMCPrev is the previous day's DCM
     DCPrev is the previous day's DC
     LAT is the latitude in decimal degrees of the location for which calculations are being made
+
+    RETURNS
+    -------
+    non-negative FWI value
 
     USAGE:
     calcFWI(4,17,42,25,0,85,6,15,45.98) = 10.096371392382368'''
