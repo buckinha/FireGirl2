@@ -2,12 +2,14 @@
 #FireGirl Weather Model
 
 import utils.FWIFunctions as FWI
+import random
+import math
 
 class WeatherModel:
     """Model for producing weather streams and weather forecasts for FireGirl2"""
 
     def __init__(self):
-        pass
+        self.forecast_accuracy = 0.8
 
     def __repr__(self):
         """TODO"""
@@ -39,7 +41,7 @@ class WeatherModel:
 
         #how many days long is this fire event?
         ave_fire_weather_days = 3
-        random.seed(random_seed+3789284)
+        random.seed(seed_add(random_seed, 3789284))
         day_count = int(random.expovariate(1.0/ave_fire_weather_days))
 
         #if the fire event is less than three days long, we'll need to add some extras to make sure
@@ -48,34 +50,75 @@ class WeatherModel:
 
         #add days for the lead-in time, which is needed to allow FWI index values to come 
         # to equilibrium
-        day_count += 10 + extra_forecast_days
+        buffer_days = 10
+        day_count += (buffer_days + extra_forecast_days)
 
         #get random weather variables for the days
-        weather = [ self.draw_weather_variables(date, random_seed+9472843) for i in range(day_count) ]
+        weather = [ self.draw_weather_variables(date, seed_add(random_seed, 9472843)) for i in range(day_count) ]
+        forecast = weather[:]
 
         #now do a blending of the variables, walking forward from the first day, where
         # each day is a combination of (mostly) the previous day's value, and (somewhat)
         # it's own value
-        blend_prcnt = 0.8
+        w_blend = 0.8
+        f_blend = self.forecast_accuracy * w_blend
 
         for i in range(1,day_count):
-            weather[i]["Temperature"]    = blend_prcnt * weather[i-1]["Temperature"]    + (1-blend_prcnt) * weather[i]["Temperature"]
-            weather[i]["RH"]             = blend_prcnt * weather[i-1]["RH"]             + (1-blend_prcnt) * weather[i]["RH"]
-            weather[i]["Wind Speed"]     = blend_prcnt * weather[i-1]["Wind Speed"]     + (1-blend_prcnt) * weather[i]["Wind Speed"]
-            weather[i]["Wind Direction"] = blend_prcnt * weather[i-1]["Wind Direction"] + (1-blend_prcnt) * weather[i]["Wind Direction"]
-            weather[i]["Rainfall"]       = blend_prcnt * weather[i-1]["Rainfall"]       + (1-blend_prcnt) * weather[i]["Rainfall"]
+            weather[i]["Temperature"]    = w_blend * weather[i-1]["Temperature"]    + (1-w_blend) * weather[i]["Temperature"]
+            weather[i]["RH"]             = w_blend * weather[i-1]["RH"]             + (1-w_blend) * weather[i]["RH"]
+            weather[i]["Wind Speed"]     = w_blend * weather[i-1]["Wind Speed"]     + (1-w_blend) * weather[i]["Wind Speed"]
+            weather[i]["Wind Direction"] = w_blend * weather[i-1]["Wind Direction"] + (1-w_blend) * weather[i]["Wind Direction"]
+            weather[i]["Rainfall"]       = w_blend * weather[i-1]["Rainfall"]       + (1-w_blend) * weather[i]["Rainfall"]
+
+            forecast[i]["Temperature"]    = f_blend * forecast[i-1]["Temperature"]    + (1-f_blend) * forecast[i]["Temperature"]
+            forecast[i]["RH"]             = f_blend * forecast[i-1]["RH"]             + (1-f_blend) * forecast[i]["RH"]
+            forecast[i]["Wind Speed"]     = f_blend * forecast[i-1]["Wind Speed"]     + (1-f_blend) * forecast[i]["Wind Speed"]
+            forecast[i]["Wind Direction"] = f_blend * forecast[i-1]["Wind Direction"] + (1-f_blend) * forecast[i]["Wind Direction"]
+            forecast[i]["Rainfall"]       = f_blend * forecast[i-1]["Rainfall"]       + (1-f_blend) * forecast[i]["Rainfall"]
 
         #now add the FWI variables
-        #TODO
+        #The first day will get a value of 50 for FFMC, DMC, and DC (moisture and drought codes)
+        #After that, they will adjust themselves as they go
+        weather[0]["FFMC"] = 50
+        weather[0]["DMC"] = 50
+        weather[0]["DC"] = 50
+        forecast[0]["FFMC"] = 50
+        forecast[0]["DMC"] = 50
+        forecast[0]["DC"] = 50
+        for i in range(1,day_count):
+            #I'm holding the month to whatever it was when the fire started to avoid any 
+            # discontinuities partway through a weather stream. Hense 'weather[0]["Date"]'
+            MONTH = self.get_month(weather[0]["Date"]) 
+            LAT = 45
+            TEMP = weather[i]["Temperature"]
+            RH = weather[i]["RH"]
+            WIND = weather[i]["Wind Speed"]
+            RAIN = weather[i]["Rainfall"]
+            FFMCPrev = weather[i-1]["FFMC"]
+            DMCPrev = weather[i-1]["DMC"]
+            DCPrev = weather[i-1]["DC"]
+            weather[i]["FFMC"] = FWI.FFMC(TEMP,RH,WIND,RAIN,FFMCPrev)
+            weather[i]["DMC"] = (TEMP,RH,RAIN,DMCPrev,LAT,MONTH)
+            weather[i]["DC"] = FWI.DC(TEMP,RH,RAIN,DMCPrev,LAT,MONTH)
+            weather[i]["FWI"] = FWI.calcFWI(MONTH,TEMP,RH,WIND,RAIN,FFMCPrev,DMCPrev,DCPrev,LAT)
 
-        #TODO now for the forecast
-        #we only need forecast information for the days of the fire event, but not for those that come before
-        # since those are considered to have happened before the ignition
-        #also, the forecast will always be three days long
-        forecast = weather[10:13]
+            TEMP = forecast[i]["Temperature"]
+            RH = forecast[i]["RH"]
+            WIND = forecast[i]["Wind Speed"]
+            RAIN = forecast[i]["Rainfall"]
+            FFMCPrev = forecast[i-1]["FFMC"]
+            DMCPrev = forecast[i-1]["DMC"]
+            DCPrev = forecast[i-1]["DC"]
+            forecast[i]["FFMC"] = FWI.FFMC(TEMP,RH,WIND,RAIN,FFMCPrev)
+            forecast[i]["DMC"] = (TEMP,RH,RAIN,DMCPrev,LAT,MONTH)
+            forecast[i]["DC"] = FWI.DC(TEMP,RH,RAIN,DMCPrev,LAT,MONTH)
+            forecast[i]["FWI"] = FWI.calcFWI(MONTH,TEMP,RH,WIND,RAIN,FFMCPrev,DMCPrev,DCPrev,LAT)
+
+        #the forecast will always be three days long
+        forecast = weather[buffer_days:buffer_days+3]
 
         #trim off the ten lead-in days
-        weather = weather[10:]
+        weather = weather[buffer_days:]
         #trim off any extra forecast days
         if extra_forecast_days > 0:
             weather = weather[:-1*extra_forecast_days]
@@ -88,7 +131,7 @@ class WeatherModel:
         PARAMETERS
         ----------
         random_seed
-            Any hashable value for seeding the weather/forecast generation process.
+            Any numeric value for seeding the weather/forecast generation process.
             Ensures replicability.
 
 
@@ -107,7 +150,7 @@ class WeatherModel:
         """
         #how many fires are there this year?
         ave_fire_count = 0.5
-        random.seed(random_seed+471294932)
+        random.seed(seed_add(random_seed, 471294932))
         fire_count = int(random.expovariate(1.0 / ave_fire_count))
 
         
@@ -115,7 +158,7 @@ class WeatherModel:
         forecasts = [None]*fire_count
         for f in range(fire_count):
             #drawing fire days bewteen April-ish and October-ish
-            streams = self.get_new_fire_weather( date=random.randint(100,310), random_seed=random_seed+128439322)
+            streams = self.get_new_fire_weather( date=random.randint(100,310), random_seed=seed_add(random_seed,128439322))
             weather_streams[i] = streams[0]
             forecasts[i] = streams[1]
 
@@ -144,21 +187,21 @@ class WeatherModel:
         TODO: what SHOULD it be?
         """
         wind_mean = 10
-        random.seed(random_seed + 439201)
+        random.seed(seed_add(random_seed,439201))
         return random.expovariate(1.0 / wind_mean)
 
     def draw_wind_direction(self, date, random_seed=None):
         """A purely random wind direction, in degrees from North"""
-        random.seed(random_seed + 818127)
+        random.seed(seed_add(random_seed, 818127))
         return random.uniform(0,364)
         
     def draw_temp(self, date, random_seed=None):
         """Random temperature for the given date (as day of year)"""
 
         # from http://www.na.fs.fed.us/spfo/pubs/silvics_manual/Volume_1/pinus/ponderosa.htm
-        # average annual temperatures are between 5° and 10° C (41° and 50° F), 
-        # and average July-August temperatures are between 17° and 21° C
-        # Annual extremes are from -40° to 43° 
+        # average annual temperatures are between 5 and 10 C (41 and 50 F), 
+        # and average July-August temperatures are between 17 and 21 C
+        # Annual extremes are from -40 to 43 
         #
         #Lets call average annual temperature 7.5C, with average summer temps of 19C
         # so the mean temp will rise from 7.5C in May to 19C in July, and back down to
@@ -168,7 +211,7 @@ class WeatherModel:
         date = date-121
         date_mean_temp = math.sin( (2.0*(date)*math.pi) / (365.0) ) * (19-7.5) + 7.5
 
-        random.seed(random_seed + 390752)
+        random.seed(seed_add(random_seed, 390752))
         #lets let daily actual temperatures vary around the mean by way of a normal distribution
         # where 95%-ish remain within +/- 20C from the mean (so one standard devation will be 10)
 
@@ -185,8 +228,11 @@ class WeatherModel:
         date_mean_humidity = math.cos( (2.0*(date)*math.pi) / (365.0) ) * (80-15) + 15
         
         #lets let actual humidity vary +/- 5%
-        random.seed(random_seed + 985727)
-        return random.normalvariate(date_mean_humidity, 2.5)
+        random.seed(seed_add(random_seed, 985727))
+        rh = random.normalvariate(date_mean_humidity, 2.5)
+        if rh < 0: rh = 0.0
+        if rh > 100: rh = 100.0
+        return rh
 
     def draw_rain(self, date, random_seed=None):
         #from http://www.na.fs.fed.us/spfo/pubs/silvics_manual/Volume_1/pinus/ponderosa.htm
@@ -194,7 +240,7 @@ class WeatherModel:
         #
         #that's ~ 0.8 mm per day. Lets draw from an exponential with mean = 0.8
         mean_summer_precip = 0.8 #mm
-        random.seed(random_seed + 792723)
+        random.seed(seed_add(random_seed, 792723))
         rainfall = random.expovariate(1.0 / mean_summer_precip)
 
         #cutting it off, so that many values are zero
@@ -241,3 +287,13 @@ class WeatherModel:
         else:
             #december
             return 12
+
+
+def seed_add(seed, value):
+    #if the seed is None, normally that uses system time, but I can't add values to it
+    #So here, grab a system-time-seeded random val instead, and use it for the base seed
+    if not seed:
+        random.seed(None)
+        seed = random.randint(-1000000,1000000)
+
+    return seed + value

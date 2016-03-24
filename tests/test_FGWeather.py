@@ -1,6 +1,119 @@
 import firegirl2.FGWeather
 import random
 
+def test_draw_weather_variables():
+    weather_model = firegirl2.FGWeather.WeatherModel()
+    #test for random seed consistency
+    test_count = 1000
+    random.seed(None)
+    for i in range(test_count):
+        seed = random.random()
+        date = random.randint(1,365)
+        val1 = weather_model.draw_weather_variables(date, seed)
+        val2 = weather_model.draw_weather_variables(date, seed)
+        assert val1 == val2
+
+
+def test_draw_wind():
+    weather_model = firegirl2.FGWeather.WeatherModel()
+    #test for random seed consistency
+    test_count = 1000
+    random.seed(None)
+    for i in range(test_count):
+        seed = random.random()
+        date = random.randint(1,365)
+        val1 = weather_model.draw_wind(date, seed)
+        val2 = weather_model.draw_wind(date, seed)
+        assert val1 == val2
+
+
+    #test range
+    for i in range(test_count):
+        val = weather_model.draw_wind(random.randint(1,365))
+        assert val >= 0
+        assert val < 200 #optional... theoretically, it could be
+
+
+def test_draw_wind_direction():
+    weather_model = firegirl2.FGWeather.WeatherModel()
+    #test for random seed consistency
+    test_count = 1000
+    random.seed(None)
+    for i in range(test_count):
+        seed = random.random()
+        date = random.randint(1,365)
+        val1 = weather_model.draw_wind_direction(date, seed)
+        val2 = weather_model.draw_wind_direction(date, seed)
+        assert val1 == val2
+
+
+    #test range
+    for i in range(test_count):
+        val = weather_model.draw_wind_direction(random.randint(1,365))
+        assert val >= 0
+        assert val < 365
+
+
+
+def test_draw_temp():
+    weather_model = firegirl2.FGWeather.WeatherModel()
+    #test for random seed consistency
+    test_count = 1000
+    random.seed(None)
+    for i in range(test_count):
+        seed = random.random()
+        date = random.randint(1,365)
+        val1 = weather_model.draw_temp(date, seed)
+        val2 = weather_model.draw_temp(date, seed)
+        assert val1 == val2
+
+    #test range
+    for i in range(test_count):
+        val = weather_model.draw_temp(random.randint(1,365))
+        assert val >= -50
+        assert val < 60
+
+
+def test_draw_RH():
+    weather_model = firegirl2.FGWeather.WeatherModel()
+    #test for random seed consistency
+    test_count = 1000
+    random.seed(None)
+    for i in range(test_count):
+        seed = random.random()
+        date = random.randint(1,365)
+        val1 = weather_model.draw_RH(date, seed)
+        val2 = weather_model.draw_RH(date, seed)
+        assert val1 == val2
+
+    #test range
+    for i in range(test_count):
+        val = weather_model.draw_RH(random.randint(1,365))
+        assert val >= 0
+        assert val < 100
+
+
+def test_draw_rain():
+    weather_model = firegirl2.FGWeather.WeatherModel()
+    #test for random seed consistency
+    test_count = 1000
+    random.seed(None)
+    for i in range(test_count):
+        seed = random.random()
+        date = random.randint(1,365)
+        val1 = weather_model.draw_rain(date, seed)
+        val2 = weather_model.draw_rain(date, seed)
+        assert val1 == val2
+
+    #test range
+    for i in range(test_count):
+        val = weather_model.draw_rain(random.randint(1,365))
+        assert val >= 0
+        assert val < 500
+
+
+
+
 def test_get_month():
     WM = firegirl2.FGWeather.WeatherModel()
 
@@ -25,6 +138,12 @@ def test_get_month():
 
 def all_tests():
     test_get_month()
+    test_draw_wind()
+    test_draw_wind_direction()
+    test_draw_temp()
+    test_draw_RH()
+    test_draw_rain()
+    test_draw_weather_variables()
 
 
 if __name__ == "__main__":
