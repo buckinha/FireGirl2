@@ -1,5 +1,7 @@
-#FGWeather.py
+#firegirl2/FGWeather.py
 #FireGirl Weather Model
+
+import utils.FWIFunctions as FWI
 
 class WeatherModel:
     """Model for producing weather streams and weather forecasts for FireGirl"""
@@ -9,7 +11,7 @@ class WeatherModel:
 
     def __repr__(self):
         """TODO"""
-        return "A WeatherModel object"
+        return "A FireGirl2 WeatherModel object"
 
 
     def get_new_fire_weather(self, date, random_seed=None):
@@ -68,3 +70,47 @@ class WeatherModel:
         forecasts = []
 
         return weather_streams, forecasts
+
+
+    def draw_weather_variables(self, date, random_seed=None):
+        """Draws random weather variables and derived values, given the integer date"""
+        pass
+
+    def get_month(self, day):
+        """Return the numeral month, given the day-of-the-year"""
+        if day <= 31:
+            #january
+            return 1
+        elif day <= (31+28):
+            #february
+            return 2
+        elif day <= (31+28+31):
+            #march
+            return 3
+        elif day <= (31+28+31+30):
+            #april
+            return 4
+        elif day <= (31+28+31+30+31):
+            #may
+            return 5
+        elif day <= (31+28+31+30+31+30):
+            #june
+            return 6
+        elif day <= (31+28+31+30+31+30+31):
+            #july
+            return 7
+        elif day <= (31+28+31+30+31+30+31+31):
+            #august
+            return 8
+        elif day <= (31+28+31+30+31+30+31+31+30):
+            #september
+            return 9
+        elif day <= (31+28+31+30+31+30+31+31+30+31):
+            #october
+            return 10
+        elif day <= (31+28+31+30+31+30+31+31+30+31+30):
+            #november
+            return 11
+        else:
+            #december
+            return 12
