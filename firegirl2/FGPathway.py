@@ -1,5 +1,6 @@
 import FGFire, FGHarvest, FGTreatments, FGGrowth, FGPolicy, FGWeather
 import utils.DiamondSquare as DS
+from utils.seed_add import seed_add as seed_add
 import numpy as np
 #import matplotlib.pyplot as plt
 
@@ -100,8 +101,8 @@ class FGPathway:
             #note: the do___ methods will also update the pathway object itself
             yr.update_fire( self.do_fires() )
             yr.update_harvest( self.do_harvest() )
-            self.do_fuel_treatments()
-            self.do_growth()
+            #self.do_fuel_treatments()
+            #self.do_growth()
             self.current_year += 1
 
 
@@ -114,7 +115,9 @@ class FGPathway:
         # 1) Find out how many ignitions there are this year,
         #      and their associated weather streams/forecasts
         ##########################################################
-        weather_seed = self.primary_random_seed + self.current_year + 2222222
+        weather_seed = seed_add(self.primary_random_seed, self.current_year)
+        weather_seed = seed_add(weather_seed, 298238234)
+        
         weathers, forecasts = self.WeatherModel.get_new_fires(random_seed=weather_seed)
 
         #generate ignition locations
@@ -190,7 +193,7 @@ class FGPathway:
         return vol_cell
 
     def get_age(self, loc):
-        return = self.current_year - self.stand_init_yr[loc[0]][loc[1]]
+        return self.current_year - self.stand_init_yr[loc[0]][loc[1]]
 
 
 
@@ -223,19 +226,21 @@ class YearRecord:
 
         self.harvest_revenue = 0.0
         self.acres_harvested = 0
+        self.volume_harvested = 0.0
 
 
     def __repr__(self):
         """TODO"""
-        return "A YearRecord object"
+        return "A FireGirl2 YearRecord object"
 
 
     def update_harvest(values_from_harvest_model):
         """
         FGHarvest.HarvestModel.simulate_harvest() method returns a tuple: (acres_cut, revenue)
         """
-        self.acres_harvested = values_from_harvest_model[0]
-        self.harvest_revenue = values_from_harvest_model[1]
+        self.acres_harvested = values_from_harvest_model["Acres Cut"]
+        self.volume_harvested = values_from_harvest_model["Volume Cut"]
+        self.harvest_revenue = values_from_harvest_model["Revenue"]
 
 
     def update_fire(fire_records):

@@ -2,6 +2,7 @@
 #FireGirl Weather Model
 
 import utils.FWIFunctions as FWI
+from utils.seed_add import seed_add as seed_add
 import random
 import math
 
@@ -289,11 +290,3 @@ class WeatherModel:
             return 12
 
 
-def seed_add(seed, value):
-    #if the seed is None, normally that uses system time, but I can't add values to it
-    #So here, grab a system-time-seeded random val instead, and use it for the base seed
-    if not seed:
-        random.seed(None)
-        seed = random.randint(-1000000,1000000)
-
-    return seed + value

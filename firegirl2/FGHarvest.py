@@ -31,18 +31,21 @@ class HarvestModel:
     def simulate_harvest(self, FGPathway_object, method="selection"):
         """Simulates harvesting, according to the current settings, on a given FGPathway
 
-
-
         PARAMETERS
         ----------
-
         FGPathway_object
             The FGPathway object on which to simulate harvesting
+        method
+            Set to either "selection" or "clear cut". Choosing 'selection' sets the harvest 
+            model to try to cut only single, isolated cells (the smallest unit it can cut).
+            Choosign "clear cut" sets the harvest model to try to cut large blocks of cells
+            at a time, up to a maximum size, held in HarvestModel.clear_cut_size_limit
 
 
         RETURNS
         -------
-        None
+        a dictionary containing the harvest summary. Keys are:
+            "Acres Cut", "Volume Cut", "Revenue"
 
         """
         
@@ -63,7 +66,9 @@ class HarvestModel:
         where possible, leaving an un-cut seperation between them
 
         RETURNS
-        (acres_cut, volume_cut, revenue)
+        -------
+        a dictionary containing the harvest summary. Keys are:
+            "Acres Cut", "Volume Cut", "Revenue"
         """
         pw = FGPathway_object
 
@@ -90,8 +95,11 @@ class HarvestModel:
                         volume_cut += pw.get_volume([i,j])
                         self.cut_stand(pw, [i,j])
 
+        summary = {"Acres Cut":acres_cut,
+                   "Volume Cut":volume_cut,
+                   "Revenue": self.get_revenue(volume_cut)}
 
-        return acres_cut, volume_cut, self.get_revenue(volume_cut)
+        return summary
 
 
     def clear_cut(self, FGPathway_object):
@@ -100,7 +108,9 @@ class HarvestModel:
         up to some maximum allowed size
 
         RETURNS
-        (acres_cut, volume_cut, revenue)
+        -------
+        a dictionary containing the harvest summary. Keys are:
+            "Acres Cut", "Volume Cut", "Revenue"
         """
 
         #TODO
@@ -108,7 +118,11 @@ class HarvestModel:
         acres_cut = 0
         volume_cut = 0
 
-        return acres_cut, volume_cut, self.get_revenue(volume_cut)
+        summary = {"Acres Cut":acres_cut,
+                   "Volume Cut":volume_cut,
+                   "Revenue": self.get_revenue(volume_cut)}
+                   
+        return summary
 
 
     def cut_stand(self, FGPathway_object, loc):
