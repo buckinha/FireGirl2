@@ -49,7 +49,7 @@ class GrowthModel:
 
     #get the qty of ladder fuels for a given species and fuel age
     def get_volume(self, age, site_index, species="DEFAULT"):
-        """Looks up the timber volume for a stand of the given age and site index"""
+        """Looks up the timber volume per acre for a stand of the given age and site index"""
 
         #capping input values
         age = min(self.max_age-1, age)
@@ -100,7 +100,7 @@ class GrowthModel:
     #################################
 
     def growth_function_PIPO(self, age, site_index):
-        """The wood volume per hectare(?) of Pinus ponderosa given the stand age and site site_index
+        """The wood volume per acre of Pinus ponderosa given the stand age and site site_index
 
         Site index should be in meters (i.e. the expected tree height at 100 years)
 
@@ -108,6 +108,9 @@ class GrowthModel:
         specific site indices. The individual site-index-specific functions are of the form v = a*ln(t) - b
         The parameters of those functions were model-able, so I did, and it gave:
             Volume =  (67.793*e^(0.04730*s)) * ln(t) - (201.18*e^(0.044199*s))
+
+        These calculations were all on a per-hectare basis, so the function will finish by converting
+        to cubic meters per acre.
 
         """
         #TESTED 3-15-16: This function recreates the input data acceptably
@@ -120,6 +123,8 @@ class GrowthModel:
             if volume < 0.0:
                 return 0.0
             else:
+                #this is in cubic meters per hectare; convert to per-acre
+                volume = volume * 2.47105 #2.47105 acres per hectare
                 return volume
 
     def surface_fuel_function_PIPO(self, surface_fuel_age):
