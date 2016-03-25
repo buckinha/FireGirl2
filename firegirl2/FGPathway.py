@@ -67,7 +67,10 @@ class FGPathway:
         #   the last year in which there was a surface fire
         self.surf_fire_yr = DS.diamond_square(self.size, min_height=-100, max_height=0, roughness=0.75, random_seed=primary_random_seed+2, AS_NP_ARRAY=True)
 
-        
+
+        #units
+        #how many acres per cell?
+        self.acres_per_cell = 25
 
 
     #adding a custom __repr__ method, esp. for use with ipython's '?' command
@@ -173,6 +176,21 @@ class FGPathway:
         ladder_fuel_age = self.current_year - self.start_year_ladder_fuels[loc[0], loc[1]]
         return self.GrowthModel.get_ladder_fuel(age=ladder_fuel_age,species="DEFAULT")
 
+    def get_volume(self, loc):
+        """Gets the wood volume of the trees in a stand"""
+        age = self.get_age(loc)
+        si = self.site_index[loc[0]][loc[1]]
+
+        #volume from the volume model
+        vol_per_acre = self.GrowthModel.get_volume(age=age, site_index=si)
+
+        #volume per cell
+        vol_cell = vol_acre * self.acres_per_cell
+
+        return vol_cell
+
+    def get_age(self, loc):
+        return = self.current_year - self.stand_init_yr[loc[0]][loc[1]]
 
 
 

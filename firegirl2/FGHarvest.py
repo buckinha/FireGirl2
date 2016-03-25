@@ -10,6 +10,18 @@ class HarvestModel:
         #largest clear-cut size allowed
         self.clear_cut_size_limit = 10
 
+        #the rotation age for stands in this forest
+        self.rotation_age = 55 #years
+
+        #how many cells/acres can be harvested in one year
+        self.annual_harvest_acres_cap = float("inf")
+
+        #timber price
+        # 1million boardfeet = 2359.737 cubic meters
+        # with $25/mbf, that makes $25/2360m^3
+        # which is $0.01059322 per cubic meter
+        self.dollars_per_cubic_meter = 0.01059322
+
 
     def __repr__(self):
         """TODO"""
@@ -51,9 +63,35 @@ class HarvestModel:
         where possible, leaving an un-cut seperation between them
 
         RETURNS
-        (acres_cut, revenue)
+        (acres_cut, volume_cut, revenue)
         """
+        pw = FGPathway_object
 
+        acres_cut = 0
+        volume_cut = 0
+
+        x_width = pw.size[0]
+        y_width = pw.size[1]
+
+        #loop over all stands and cut up to this year's max volume of harvestable-aged trees
+        for outer in range(self.selection_cut_gap):
+            if volume_cut > self.annual_harvest_cap: break
+
+            for i in range(outer, x_width, self.selection_cut_gap):
+                if volume_cut > self.annual_harvest_cap: break
+
+                for j in range(0, y_width, self.selection_cut_gap):
+                    if volume_cut > self.annual_harvest_cap: break
+
+                    #if this cell/stand is of harvestable age, cut it and record the timber volume and acres
+                    if  pw.get_age([i,j]) > self.rotation_age:
+                        #it's harvestable, so cut it.
+                        acres_cut += pw.acres_per_cell
+                        volume_cut += pw.get_volume([i,j])
+                        self.cut_stand(pw, [i,j])
+
+
+        return acres_cut, volume_cut, self.get_revenue(volume_cut)
 
 
     def clear_cut(self, FGPathway_object):
@@ -62,5 +100,37 @@ class HarvestModel:
         up to some maximum allowed size
 
         RETURNS
-        (acres_cut, revenue)
+        (acres_cut, volume_cut, revenue)
         """
+
+        #TODO
+
+        acres_cut = 0
+        volume_cut = 0
+
+        return acres_cut, volume_cut, self.get_revenue(volume_cut)
+
+
+    def cut_stand(self, FGPathway_object, loc):
+        """Cuts a stand at this location"""
+        FGPathway_object.stand_init_yr[loc[0],loc[1]] = FGPathway_object.current_year
+
+        #TODO
+        #set slash accumulation
+        #burning slash and remaining vegetation?
+
+
+    def get_revenue(self, volume):
+        return volume * self.dollars_per_cubic_meter
+
+
+    def set_dollars_per_mbf(self, dollars_per_mbf):
+        """sets the harvest model's stumpage value"""
+        # 1million boardfeet = 2359.737 cubic meters
+        #
+        #so, for example:
+        # with $25/mbf, that makes $25/2360m^3
+        # which is $0.01059322 per cubic meter
+
+        self.dollars_per_cubic_meter = dollars_per_mbf / 2359.737
+
