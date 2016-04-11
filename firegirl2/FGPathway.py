@@ -4,7 +4,6 @@ from utils.seed_add import seed_add as seed_add
 import numpy as np
 #import matplotlib.pyplot as plt
 
-
 class FGPathway:
     """
     This is the primary FireGirl class. An instantiated FireGirlPathway object will hold
@@ -130,12 +129,13 @@ class FGPathway:
         for i in range(len(weathers)):
             #we can't get a list of suppression decisions all at once, because each fire
             # may change the landscape in the vicinity of the NEXT fire, and that may in
-            # turn change the policy decision.
+            # turn change the policy decision. So we have to do one at a time and 
+            # simulate the fire, before getting the next decision
 
             ##########################################################
             # 2) Use the current suppression policy to make choices
             ##########################################################
-            supr_decision = self.Policy.get_pol_decisions(self, locations[i], forecasts[i])
+            supr_decision = self.Policy.get_pol_decision(self, locations[i], forecasts[i])
 
             ##########################################################
             # 3) Simulate each fire (and potential suppression)
@@ -171,10 +171,15 @@ class FGPathway:
     def get_surface_fuel(self, loc):
         """Returns the surface fuel value for the given location"""
         surf_fuel_age = self.current_year - self.start_year_surface_fuels[loc[0], loc[1]]
-        return self.GrowthModel.get_surface_fuel(age=surf_fuel_age,species="DEFAULT")
+        return self.GrowthModel.get_surface_fuel(fuel_age=surf_fuel_age, stand_age=stand_age,species="DEFAULT")
 
     def get_ladder_fuel(self, loc):
-        """Returns the surface fuel value for the given location"""
+        """Returns the surface fuel value for the given location
+
+        This value will be used by the FireModel to calculate spread rates and crown fires. 
+        In the default models, it is a non-negative multiplier to be used on the weather-
+        related spread rate calculations; typically with values between 0.5 and 1.3 or so.
+        """
 
         ladder_fuel_age = self.current_year - self.start_year_ladder_fuels[loc[0], loc[1]]
         return self.GrowthModel.get_ladder_fuel(age=ladder_fuel_age,species="DEFAULT")

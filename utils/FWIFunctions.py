@@ -236,7 +236,7 @@ def ISI(WIND,FFMC):
 
     RETURNS
     -------
-    Non-negative values reflecting spread rate (Units?)
+    Non-negative values reflecting spread rate (meters/minute)
     Higher ISI means faster fire spread
 
     USAGE:
@@ -293,7 +293,7 @@ def FWI(ISI, BUI):
     RETURNS
     -------
     Non-negative values
-    Higher fire weather indices (FWI) indicate faster fire spread (units?)
+    Higher fire weather indices (FWI) indicate faster fire spread (meters/minute)
 
     USAGE:
     FWI(10.853661073655068,8.4904265358371838) = 10.096371392382368'''

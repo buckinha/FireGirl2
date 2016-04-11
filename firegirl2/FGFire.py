@@ -9,6 +9,11 @@ class SpreadModel:
         #setting for whether or not returned FireRecord objects should save their individual burn maps
         self.SAVE_BURN_MAPS = True
 
+        #to convert fire spread rate values into time units used within the FireModel, we need to set
+        #how many hours in a given day fires are allowed to spread. From what i understand, many/most
+        #fires stop spreading to any significant effect once the sun is down.
+        self.hours_burn_time_per_day = 14
+
     def __repr__(self):
         """TODO"""
         return "FGFire.SpreadModel Object"
@@ -115,7 +120,8 @@ class SpreadModel:
             loc = (current_ign[1], current_ign[2])
 
             #increment current time to this cell's ignition time. This can allow a single
-            # ignition to go beyond the max time.
+            # ignition to go beyond the max time, but it will be the last to burn, in that
+            # case.
             current_time = current_ign[0]
             #adjust day, if needed
             if current_time - current_day >= 1.0:
@@ -178,46 +184,24 @@ def calc_spread_rate(FGPathway_object, location, weather_today, supr_dec):
         float, in units of "acre-length"/day = 208ft/day 
     """
 
+    base_sr = weather_today["FWI"] * FGPathway_object.get_surface_fuel(location)
 
-    #### OLD METHOD from FireGirl v1 ### 
-    def OLDcalcFireSpreadRate(wind, temp, fuel):
-        #This function calculates the logistic function that governs fire spread
-        #   rates. The parameters below are arbitrary, and give rise to the
-        #   shape I wanted for the model:
+    #modify by cell size
+    #FWI is in meters/minute
 
-        ### Variables from the old FireGirl v1 initialization ### ### ### ### 
-        #These are the parameters that give shape to the fire spreadrate calculation
-        # It is a logistic function that takes FireGirl's (windspeed + temperature)
-        # as it's input.
-        fire_param_inputscale = 10
-        fire_param_outputscale = 10
-        fire_param_zeroadjust = 15
-        fire_param_smoothness = 0.4
-        ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### 
-        
-        out_scale = fire_param_outputscale
-        in_scale = fire_param_inputscale
-        zero_adj = fire_param_zeroadjust
-        smooth = fire_param_smoothness
-        
-        exponent = (   -1 * smooth *     (   ((wind + temp + fuel) / in_scale) - zero_adj   )       )
-        fspread = out_scale / (1 + math.exp(exponent))
-        
-        #Enforcing minimum spread restrictions
-        if (wind + temp) < self.min_spread_windtemp:
-            fspread = 0
-        if fuel < self.min_spread_fuel:
-            fspread = 0
-        
-        return fspread
+    cell_meters_sq = FGPathway_object.acres_per_cell * 4046.85642 # sq meters / acre = 4046.85642
+    cell_edge_length = math.sqrt(cell_meters_sq)
 
-    #using old model
-    wind = weather_today["Wind Speed"]
-    temp = weather_today["Temperature"]
-    fuel = FGPathway_object.get_surface_fuel(location)
-    sr = OLDcalcFireSpreadRate(wind, temp, fuel)
+    cell_edges_per_minute = base_sr / cell_edge_length
 
-    return sr
+    #time in FireGirl is set such that one day of fire burn time = 1.0 time units.
+    sr_per_time_unit = self.hours_burn_time_per_day * 60.0 * cell_edges_per_minute
+
+
+    #TODO Model Suppression Effort?
+
+    return sr_per_time_unit
+
 
 def calc_suppression_cost(fire_record):
     return 0.0
