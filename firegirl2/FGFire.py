@@ -1,5 +1,6 @@
 import random, Queue, math
 import numpy as np
+from utils.sigmoid import sigmoid
 
 USING_8_ANGLE_WIND = True
 
@@ -87,8 +88,9 @@ class SpreadModel:
         for ign in init_ignitions:
             #check to see if any of the spread rates are greater than zero.
             if ign[0] > 0:
-            spreading = True
-            break
+                spreading = True
+                break
+
 
         if not spreading:
             fr = FireRecord()
@@ -119,6 +121,14 @@ class SpreadModel:
             current_ign = pq.get()
             loc = (current_ign[1], current_ign[2])
 
+
+            #check if the location is out of bounds, and if so, ignore this point
+            if ( loc[0] < 0 ) or (loc[0] >= FGPathway_object.size[0]):
+                continue
+            if ( loc[1] < 0 ) or (loc[1] >= FGPathway_object.size[1]):
+                continue
+
+
             #increment current time to this cell's ignition time. This can allow a single
             # ignition to go beyond the max time, but it will be the last to burn, in that
             # case.
@@ -128,7 +138,7 @@ class SpreadModel:
                 current_day += 1
 
             #check to see if this cell has already been burned
-            if burn_map[loc[0], loc[1]:
+            if burn_map[loc[0], loc[1]]:
                 #it's already burned in a previous step, so lets move on
                 continue
             
@@ -189,6 +199,7 @@ def calc_spread_rate(FGPathway_object, location, weather_today, supr_dec):
     #modify by cell size
     #FWI is in meters/minute
 
+    #Todo? perhaps pre-calc this bit and hold it in the FGPathway Object?
     cell_meters_sq = FGPathway_object.acres_per_cell * 4046.85642 # sq meters / acre = 4046.85642
     cell_edge_length = math.sqrt(cell_meters_sq)
 
@@ -198,10 +209,36 @@ def calc_spread_rate(FGPathway_object, location, weather_today, supr_dec):
     sr_per_time_unit = self.hours_burn_time_per_day * 60.0 * cell_edges_per_minute
 
 
-    #TODO Model Suppression Effort?
+    #TODO Model suppression effort here, or elsewhere?
 
     return sr_per_time_unit
 
+def get_crown_burn(FGPathway_object, loc, weather_today, sppr_dec):
+    """Determines whether the overstory trees burn in a given fire
+
+    RETURNS
+    -------
+    boolean, True indicates that this cell has a burned crown, False not.
+    """
+    #in the default model, ladder fuels range from 0 to 1.3 or so
+    ladder_fuels = FGPathway_object.get_ladder_fuel(loc)
+
+    #fwi varies from 0 to over 100, and are in units of meters/minute
+    fwi = weather_today["FWI"]
+
+    #forming an index for crown-fire risk, based on the ladder fuel load, and
+    # weather conditions
+    severe_fwi = 20 #meters per minute... seems like 20 is getting pretty fast??
+    adjusted_fwi = sigmoid(min( fwi/severe_fwi, severe_fwi), center=severe_fwi, min=0.0, max=2.0)
+    crowning_danger_index = adjusted_fwi + ladder_fuels
+
+    #the cut-off for crown-fire
+    flash_point = 1.5
+
+    if crowning_danger_index > flash_point:
+        return True
+    else:
+        return False
 
 def calc_suppression_cost(fire_record):
     return 0.0
@@ -212,6 +249,12 @@ def get_neighbor_ignitions(FGPathway_object, location, weather_today, supr_dec):
     RETURNS
     A list of ignitions, [ (ignition_time, location_x, location_y), (...), ... , (...) ]
     """
+
+    #check if the location is out of bounds, and if so, ignore this point
+    if ( location[0] < 0 ) or (location[0] >= FGPathway_object.size[0]):
+        return []
+    if ( location[1] < 0 ) or (location[1] >= FGPathway_object.size[1]):
+        return []
 
     #calculate the forward spreadrate given the wind speed and fuels
     """TODO"""
@@ -247,6 +290,8 @@ def get_neighbor_ignitions(FGPathway_object, location, weather_today, supr_dec):
 
     #create the return list
     #Note, these are not parsed to get rid of infinite, 0, or other strange ignition times
+    #Note, some of these may be out of bounds!!! To avoid checking constantly here, and 
+    # having to append to or remove from lists, they'll be checked and skipped later on.
     final_list = [[ignition_times[0], location[0] + 1, location[1] + 0],
                   [ignition_times[1], location[0] + 1, location[1] - 1],
                   [ignition_times[2], location[0] + 0, location[1] - 1],
@@ -255,6 +300,8 @@ def get_neighbor_ignitions(FGPathway_object, location, weather_today, supr_dec):
                   [ignition_times[5], location[0] - 1, location[1] + 1],
                   [ignition_times[6], location[0] + 0, location[1] + 1],
                   [ignition_times[7], location[0] + 1, location[1] + 1]]
+
+
 
     return final_list
 
@@ -286,7 +333,7 @@ def calc_l_w_ratio(wind_speed):
     """
 
     #limiting to values between 1 and 10
-    if wind_speed < 0.0
+    if wind_speed < 0.0:
         return 1.0
     else:
         return 1.10993 + 0.0878841*wind_speed
@@ -401,14 +448,7 @@ def ellipse_dist_ratio(theta, lwr):
 
     return dist_on_angle / dist_forward
 
-def get_crown_burn(FGPathway_object, loc, weather_today, sppr_dec):
-    """
-    RETURNS
-    -------
-    boolean, True indicates that this cell has a burned crown, False not.
-    """
 
-    return False
 
 #updates the data in a FireGirl Pathway object to reflect a burn
 def update_cell(FGPathway_object, loc, burned, crowned):

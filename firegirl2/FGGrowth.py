@@ -98,7 +98,7 @@ class GrowthModel:
             return 0.0
 
     #get the qty of surface fuels for a given species and fuel age
-    def get_surface_fuel(self, fuel_age, stand_age, species="DEFAULT"):
+    def get_surface_fuel(self, stand_age, fuel_age, species="DEFAULT"):
         """Looks up the ladder fuel multiplier at the given age and site index
 
         This value will be compared against the weather-related fire spread rates
@@ -106,10 +106,10 @@ class GrowthModel:
         """
 
         #capping input values
-        age = int(min(self.max_age-1, age))
+        stand_age = int(min(self.max_age-1, stand_age))
         
         if (species == "DEFAULT") or (species == "PIPO"):
-            return self.surface_fuel_function_PIPO(self, fuel_age, stand_age)
+            return self.surface_fuel_function_PIPO(fuel_age, stand_age)
         else:
             if self.VERBOSE:
                 print("Unknown species type in GrowthModel.get_surface_fuel()")

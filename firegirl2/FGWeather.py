@@ -99,8 +99,8 @@ class WeatherModel:
             DMCPrev = weather[i-1]["DMC"]
             DCPrev = weather[i-1]["DC"]
             weather[i]["FFMC"] = FWI.FFMC(TEMP,RH,WIND,RAIN,FFMCPrev)
-            weather[i]["DMC"] = (TEMP,RH,RAIN,DMCPrev,LAT,MONTH)
-            weather[i]["DC"] = FWI.DC(TEMP,RH,RAIN,DMCPrev,LAT,MONTH)
+            weather[i]["DMC"] = FWI.DMC(TEMP,RH,RAIN,DMCPrev,LAT,MONTH)
+            weather[i]["DC"] = FWI.DC(TEMP,RAIN,DMCPrev,LAT,MONTH)
             weather[i]["FWI"] = FWI.calcFWI(MONTH,TEMP,RH,WIND,RAIN,FFMCPrev,DMCPrev,DCPrev,LAT)
 
             TEMP = forecast[i]["Temperature"]
@@ -111,8 +111,8 @@ class WeatherModel:
             DMCPrev = forecast[i-1]["DMC"]
             DCPrev = forecast[i-1]["DC"]
             forecast[i]["FFMC"] = FWI.FFMC(TEMP,RH,WIND,RAIN,FFMCPrev)
-            forecast[i]["DMC"] = (TEMP,RH,RAIN,DMCPrev,LAT,MONTH)
-            forecast[i]["DC"] = FWI.DC(TEMP,RH,RAIN,DMCPrev,LAT,MONTH)
+            forecast[i]["DMC"] = FWI.DMC(TEMP,RH,RAIN,DMCPrev,LAT,MONTH)
+            forecast[i]["DC"] = FWI.DC(TEMP,RAIN,DCPrev,LAT,MONTH)
             forecast[i]["FWI"] = FWI.calcFWI(MONTH,TEMP,RH,WIND,RAIN,FFMCPrev,DMCPrev,DCPrev,LAT)
 
         #the forecast will always be three days long
@@ -160,8 +160,8 @@ class WeatherModel:
         for f in range(fire_count):
             #drawing fire days bewteen April-ish and October-ish
             streams = self.get_new_fire_weather( date=random.randint(100,310), random_seed=seed_add(random_seed,128439322))
-            weather_streams[i] = streams[0]
-            forecasts[i] = streams[1]
+            weather_streams[f] = streams[0]
+            forecasts[f] = streams[1]
 
         return weather_streams, forecasts
 

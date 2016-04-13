@@ -2,6 +2,7 @@ import FGFire, FGHarvest, FGTreatments, FGGrowth, FGPolicy, FGWeather
 import utils.DiamondSquare as DS
 from utils.seed_add import seed_add as seed_add
 import numpy as np
+import random
 #import matplotlib.pyplot as plt
 
 class FGPathway:
@@ -40,6 +41,8 @@ class FGPathway:
         self.GrowthModel = FGGrowth.GrowthModel()
         self.WeatherModel = FGWeather.WeatherModel()
 
+        #fire suppression policy
+        self.Policy = FGPolicy.SuppressionPolicy()
 
         #sanitize landscape_size
         #check if it's iterable, and of length 2
@@ -59,13 +62,13 @@ class FGPathway:
 
         #Primary data arrays, etc...
         #   site index: this remains constant
-        self.site_index = DS.diamond_square(self.size, min_height=0, max_height=100, roughness=0.5, random_seed=primary_random_seed, AS_NP_ARRAY=True).astype(int)
+        self.site_index = DS.diamond_square(self.size, min_height=0, max_height=100, roughness=0.5, random_seed=seed_add(self.primary_random_seed, 0),AS_NP_ARRAY=True).astype(int)
         #   each cell's stand initiation year: each one started in the last 100 years or so
-        self.stand_init_yr = DS.diamond_square(self.size, min_height=-100, max_height=0, roughness=0.75, random_seed=primary_random_seed+1, AS_NP_ARRAY=True)
+        self.stand_init_yr = DS.diamond_square(self.size, min_height=-100, max_height=0, roughness=0.75, random_seed=seed_add(self.primary_random_seed, 1), AS_NP_ARRAY=True).astype(int)
         #   the last year in which each cell experienced a stand-replacing fire, leaving dead trees standing
-        self.stand_rplc_fire_yr = DS.diamond_square(self.size, min_height=-100, max_height=0, roughness=0.75, random_seed=primary_random_seed+2, AS_NP_ARRAY=True)
+        self.stand_rplc_fire_yr = DS.diamond_square(self.size, min_height=-100, max_height=0, roughness=0.75, random_seed=seed_add(self.primary_random_seed, 2), AS_NP_ARRAY=True).astype(int)
         #   the last year in which there was a surface fire
-        self.surf_fire_yr = DS.diamond_square(self.size, min_height=-100, max_height=0, roughness=0.75, random_seed=primary_random_seed+2, AS_NP_ARRAY=True)
+        self.surf_fire_yr = DS.diamond_square(self.size, min_height=-100, max_height=0, roughness=0.75, random_seed=seed_add(self.primary_random_seed, 2), AS_NP_ARRAY=True).astype(int)
 
 
         #units
@@ -93,7 +96,7 @@ class FGPathway:
         """
 
         #creat new year records for this simulation
-        year_records = [ YearRecord(i) for i in range(self.year, self.year+years) ]
+        year_records = [ YearRecord(i) for i in range(self.current_year, self.current_year+years) ]
 
         for yr in year_records:
             #simulate and record
@@ -104,7 +107,8 @@ class FGPathway:
             #self.do_growth()
             self.current_year += 1
 
-
+        #add the new records to the ongoing history
+        self.year_history = self.year_history + year_records
 
     def do_fires(self):
         """Uses the various components of the fire model to draw and (possibly) spread one year's fires.
@@ -120,7 +124,13 @@ class FGPathway:
         weathers, forecasts = self.WeatherModel.get_new_fires(random_seed=weather_seed)
 
         #generate ignition locations
-        locations = [ (random.uniform(self.size[0], self.size[1])) for i in range(len(weathers))]
+        def _rand_loc(i):
+            random.seed(seed_add(weather_seed, i+253456))
+            _x = random.uniform(self.size[0], self.size[1])
+            _y = random.uniform(self.size[0], self.size[1])
+            return (_x, _y)
+
+        locations = [ _rand_loc(i) for i in range(len(weathers))  ]
 
         #set up fire record object list
         fire_records = [None] * len(weathers)
@@ -135,7 +145,7 @@ class FGPathway:
             ##########################################################
             # 2) Use the current suppression policy to make choices
             ##########################################################
-            supr_decision = self.Policy.get_pol_decision(self, locations[i], forecasts[i])
+            supr_decision = self.Policy.get_decision(self, locations[i], forecasts[i])
 
             ##########################################################
             # 3) Simulate each fire (and potential suppression)
@@ -170,8 +180,11 @@ class FGPathway:
     ###########################
     def get_surface_fuel(self, loc):
         """Returns the surface fuel value for the given location"""
-        surf_fuel_age = self.current_year - self.start_year_surface_fuels[loc[0], loc[1]]
-        return self.GrowthModel.get_surface_fuel(fuel_age=surf_fuel_age, stand_age=stand_age,species="DEFAULT")
+
+        #Growth model method signature is: 
+        #def get_surface_fuel(self, stand_age, fuel_age, species="DEFAULT")
+        surf_fuel_age = self.current_year - self.surf_fire_yr[loc[0], loc[1]]
+        return self.GrowthModel.get_surface_fuel(stand_age=self.get_age(loc), fuel_age=surf_fuel_age, species="DEFAULT")
 
     def get_ladder_fuel(self, loc):
         """Returns the surface fuel value for the given location
@@ -181,8 +194,10 @@ class FGPathway:
         related spread rate calculations; typically with values between 0.5 and 1.3 or so.
         """
 
-        ladder_fuel_age = self.current_year - self.start_year_ladder_fuels[loc[0], loc[1]]
-        return self.GrowthModel.get_ladder_fuel(age=ladder_fuel_age,species="DEFAULT")
+        #GrowthModel method signature is:
+        # def get_ladder_fuel(self, stand_age, years_since_fire, species="DEFAULT")
+
+        return self.GrowthModel.get_ladder_fuel(stand_age=self.get_age(loc), years_since_fire=self.get_years_since_fire(loc) )
 
     def get_volume(self, loc):
         """Gets the wood volume of the trees in a stand"""
@@ -193,13 +208,19 @@ class FGPathway:
         vol_per_acre = self.GrowthModel.get_volume(age=age, site_index=si)
 
         #volume per cell
-        vol_cell = vol_acre * self.acres_per_cell
+        vol_cell = vol_per_acre * self.acres_per_cell
 
         return vol_cell
 
     def get_age(self, loc):
+        """The age of the current stand"""
         return self.current_year - self.stand_init_yr[loc[0]][loc[1]]
 
+    def get_years_since_fire(self, loc):
+        """For a given location, how many years have passed since ANY fire"""
+        ladder_fuel_age = self.current_year - self.stand_rplc_fire_yr[loc[0], loc[1]]
+        surf_fuel_age = self.current_year - self.surf_fire_yr[loc[0], loc[1]]
+        return min( ladder_fuel_age, surf_fuel_age)
 
 
 
@@ -239,7 +260,7 @@ class YearRecord:
         return "A FireGirl2 YearRecord object"
 
 
-    def update_harvest(values_from_harvest_model):
+    def update_harvest(self, values_from_harvest_model):
         """
         FGHarvest.HarvestModel.simulate_harvest() method returns a tuple: (acres_cut, revenue)
         """
@@ -248,7 +269,7 @@ class YearRecord:
         self.harvest_revenue = values_from_harvest_model["Revenue"]
 
 
-    def update_fire(fire_records):
+    def update_fire(self, fire_records):
         """Takes a list of fire records and updates values accordingly"""
         self.fire_records = fire_records
         for fr in fire_records:

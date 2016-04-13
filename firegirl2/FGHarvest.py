@@ -16,6 +16,9 @@ class HarvestModel:
         #how many cells/acres can be harvested in one year
         self.annual_harvest_acres_cap = float("inf")
 
+        #maximum volume removal allowed in one year
+        self.annual_volume_cap = float("inf")
+
         #timber price
         # 1million boardfeet = 2359.737 cubic meters
         # with $25/mbf, that makes $25/2360m^3
@@ -80,13 +83,13 @@ class HarvestModel:
 
         #loop over all stands and cut up to this year's max volume of harvestable-aged trees
         for outer in range(self.selection_cut_gap):
-            if volume_cut > self.annual_harvest_cap: break
+            if volume_cut > self.annual_volume_cap: break
 
             for i in range(outer, x_width, self.selection_cut_gap):
-                if volume_cut > self.annual_harvest_cap: break
+                if volume_cut > self.annual_volume_cap: break
 
                 for j in range(0, y_width, self.selection_cut_gap):
-                    if volume_cut > self.annual_harvest_cap: break
+                    if volume_cut > self.annual_volume_cap: break
 
                     #if this cell/stand is of harvestable age, cut it and record the timber volume and acres
                     if  pw.get_age([i,j]) > self.rotation_age:

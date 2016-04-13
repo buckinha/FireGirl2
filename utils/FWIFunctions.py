@@ -181,7 +181,7 @@ def DMC(TEMP,RH,RAIN,DMCPrev,LAT,MONTH):
     return DMCPrev + 100.0 * k
 
 
-def DC(TEMP,RH,RAIN,DMCPrev,LAT,MONTH):
+def DC(TEMP,RAIN,DCPrev,LAT,MONTH):
     '''Calculates today's Drought Code
 
     PARAMTERS

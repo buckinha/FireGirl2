@@ -1,7 +1,7 @@
 import numpy as np
 import random
 
-class FGPolicy:
+class SuppressionPolicy:
     """TODO"""
 
     def __init__(self):
@@ -45,7 +45,7 @@ class FGPolicy:
         return decisions
 
 
-    def get_decision(FGPathway_object, location, forecast):
+    def get_decision(self, FGPathway_object, location, forecast):
         """Makes a single suppression decision for a given ignition event.
 
 
