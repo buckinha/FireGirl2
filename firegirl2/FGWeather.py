@@ -17,7 +17,7 @@ class WeatherModel:
         return "A FireGirl2 WeatherModel object"
 
 
-    def get_new_fire_weather(self, date, random_seed=None):
+    def get_new_fire_weather_stream_pair(self, date, random_seed=None):
         """Creates a new weather stream and forcast
 
         PARAMETERS
@@ -47,12 +47,15 @@ class WeatherModel:
 
         #if the fire event is less than three days long, we'll need to add some extras to make sure
         #that at least the FORECAST is three days long
-        extra_forecast_days = 3 - day_count
+        extra_forecast_days = 0
+        if day_count < 3:
+            extra_forecast_days = 3 - day_count
 
         #add days for the lead-in time, which is needed to allow FWI index values to come 
         # to equilibrium
         buffer_days = 10
-        day_count += (buffer_days + extra_forecast_days)
+        day_count += buffer_days
+        day_count += extra_forecast_days
 
         #get random weather variables for the days
         weather = [ self.draw_weather_variables(date, seed_add(random_seed, 9472843)) for i in range(day_count) ]
@@ -115,7 +118,7 @@ class WeatherModel:
             forecast[i]["DC"] = FWI.DC(TEMP,RAIN,DCPrev,LAT,MONTH)
             forecast[i]["FWI"] = FWI.calcFWI(MONTH,TEMP,RH,WIND,RAIN,FFMCPrev,DMCPrev,DCPrev,LAT)
 
-        #the forecast will always be three days long
+        #the forecast will always be three days
         forecast = weather[buffer_days:buffer_days+3]
 
         #trim off the ten lead-in days
@@ -123,6 +126,7 @@ class WeatherModel:
         #trim off any extra forecast days
         if extra_forecast_days > 0:
             weather = weather[:-1*extra_forecast_days]
+
 
         return weather, forecast
 
@@ -154,12 +158,14 @@ class WeatherModel:
         random.seed(seed_add(random_seed, 471294932))
         fire_count = int(random.expovariate(1.0 / ave_fire_count))
 
-        
+        if fire_count == 0:
+            return [],[]
+
         weather_streams = [None]*fire_count
         forecasts = [None]*fire_count
         for f in range(fire_count):
             #drawing fire days bewteen April-ish and October-ish
-            streams = self.get_new_fire_weather( date=random.randint(100,310), random_seed=seed_add(random_seed,128439322))
+            streams = self.get_new_fire_weather_stream_pair( date=random.randint(100,310), random_seed=seed_add(random_seed,128439322))
             weather_streams[f] = streams[0]
             forecasts[f] = streams[1]
 

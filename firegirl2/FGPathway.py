@@ -122,6 +122,10 @@ class FGPathway:
         weather_seed = seed_add(weather_seed, 298238234)
         
         weathers, forecasts = self.WeatherModel.get_new_fires(random_seed=weather_seed)
+        
+        #if there are no fires this year, return nothing
+        if len(weathers) == 0:
+            return []
 
         #generate ignition locations
         def _rand_loc(i):

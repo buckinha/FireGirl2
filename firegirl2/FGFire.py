@@ -95,7 +95,7 @@ class SpreadModel:
         if not spreading:
             fr = FireRecord()
             fr.ignition_location=location[:]
-            fr.weather = [weather[0][:]] #only including the first day of weather
+            fr.weather = [weather[0]] #only including the first day of weather
             fr.suppressed = sppr_dec
             return fr
 
