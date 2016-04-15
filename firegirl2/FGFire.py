@@ -71,6 +71,8 @@ class SpreadModel:
         FireRecord object
         """
 
+        if len(weather) == 0:
+            print("weather is empty")
 
         ######################################
         #  Initialize the fire sequence

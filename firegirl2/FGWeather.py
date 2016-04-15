@@ -159,11 +159,11 @@ class WeatherModel:
         fire_count = int(random.expovariate(1.0 / ave_fire_count))
 
         if fire_count == 0:
-            return [],[]
+            return [[],[]]
 
         weather_streams = [None]*fire_count
         forecasts = [None]*fire_count
-        
+
         for f in range(fire_count):
             #drawing fire days bewteen April-ish and October-ish
             streams = self.get_new_fire_weather_stream_pair( date=random.randint(100,310), random_seed=seed_add(random_seed,128439322))

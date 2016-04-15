@@ -146,6 +146,10 @@ class FGPathway:
             # turn change the policy decision. So we have to do one at a time and 
             # simulate the fire, before getting the next decision
 
+            #check to make sure this weather stream has anything in it.
+            if len(weathers[i]) == 0:
+                continue
+
             ##########################################################
             # 2) Use the current suppression policy to make choices
             ##########################################################
@@ -277,7 +281,10 @@ class YearRecord:
         """Takes a list of fire records and updates values accordingly"""
         self.fire_records = fire_records
         for fr in fire_records:
-            self.fire_count += 1
-            self.suppression_costs += fr.suppression_cost
-            self.acres_burned += fr.acres_burned
-            self.acres_crown_burned += fr.acres_crown_burned
+            #for any weather streams that had no fire days, a None value will end
+            # up being in the list of fire_records, so test for it being not None:
+            if fr:
+                self.fire_count += 1
+                self.suppression_costs += fr.suppression_cost
+                self.acres_burned += fr.acres_burned
+                self.acres_crown_burned += fr.acres_crown_burned
