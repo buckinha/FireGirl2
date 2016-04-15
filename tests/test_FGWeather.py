@@ -141,7 +141,54 @@ def test_get_new_fire_weather_stream_pair():
         #forecast should always be length 3
         assert len(streams[1]) == 3
 
-    #TODO, continue building this test.
+        #check for all weather variables
+        for s in streams:
+            for day in s:
+                assert "Temperature"      in day
+                assert "RH"               in day
+                assert "Wind Speed"       in day
+                assert "Wind Direction"   in day
+                assert "Rainfall"         in day
+                assert "FFMC"             in day
+                assert "DMC"              in day
+                assert "DC"               in day
+                assert "FFMC"             in day
+                assert "DMC"              in day
+                assert "DC"               in day
+
+def test_get_new_fires(quick_test=False):
+
+    test_count = 1000
+    if quick_test:
+        test_count = 5
+
+
+    #signature:
+    #get_new_fires(random_seed=None)
+    wm = firegirl2.FGWeather.WeatherModel()
+
+    #test same seed gives same streams
+    for i in range(test_count):
+        seed = random.random()
+        a = wm.get_new_fires(seed)
+        b = wm.get_new_fires(seed)
+        assert a == b
+
+    #test different seeds give different streams
+    for i in range(test_count):
+        seed1 = random.random()
+        seed2 = random.random()
+        if seed1 == seed2: seed2 += 1
+        a = wm.get_new_fires(seed1)
+        b = wm.get_new_fires(seed2)
+        #if there's no fire days in either a or b, then the streams will be equal regardless
+        if a == b:
+            assert ( (len(a[0]) == 0) and (len(a[1]) == 0) and (len(b[0]) == 0) and (len(b[1]) == 0) )
+
+    #test same number of forecasts and weather streams
+    for i in range(test_count):
+        a = wm.get_new_fires()
+        assert len(a[0]) == len(a[1])
 
 def all_tests():
     test_get_month()
