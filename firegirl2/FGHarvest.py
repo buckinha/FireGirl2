@@ -5,7 +5,8 @@ class HarvestModel:
 
     def __init__(self):
         #how many stands should be left un-cut between each stand which is cut
-        self.selection_cut_gap = 3
+        #minimum value has to be 1
+        self.selection_cut_gap = 1
 
         #largest clear-cut size allowed
         self.clear_cut_size_limit = 10

@@ -198,7 +198,8 @@ def all_tests():
     test_draw_RH()
     test_draw_rain()
     test_draw_weather_variables()
-
+    test_get_new_fire_weather_stream_pair()
+    test_get_new_fires()
 
 if __name__ == "__main__":
     all_tests()

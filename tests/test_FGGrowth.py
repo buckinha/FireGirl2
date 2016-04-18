@@ -23,14 +23,13 @@ def test_get_ladder_fuel():
 
     for i in range(test_count):
         #let age get quite high, but lower cap at zero
-        age = random.uniform(0,1000)
-        #constrain site index to values between 0 and 100
-        site_index = random.uniform(0,100)
+        stand_age = random.uniform(0,1000)
+        years_since_fire = random.uniform(0,1000)
 
-        l = growth_model.get_ladder_fuel(age)
+        l = growth_model.get_ladder_fuel(stand_age, years_since_fire)
         
         assert l >= 0
-        assert l <= 100
+        assert l <= 5
 
 def test_get_surface_fuel():
     growth_model = FGGrowth.GrowthModel()
@@ -39,12 +38,14 @@ def test_get_surface_fuel():
 
     for i in range(test_count):
         #let age get quite high, but lower cap at zero
-        age = random.uniform(0,1000)
+        stand_age = random.uniform(0,1000)
+        fuel_age = random.uniform(0,1000)
 
-        s = growth_model.get_surface_fuel(age)
+
+        s = growth_model.get_surface_fuel(stand_age, fuel_age)
 
         assert s >= 0
-        assert s <= 100
+        assert s <= 5
 
 def all_tests():
     test_get_volume()

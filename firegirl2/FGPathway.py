@@ -64,11 +64,11 @@ class FGPathway:
         #   site index: this remains constant
         self.site_index = DS.diamond_square(self.size, min_height=0, max_height=100, roughness=0.5, random_seed=seed_add(self.primary_random_seed, 0),AS_NP_ARRAY=True).astype(int)
         #   each cell's stand initiation year: each one started in the last 100 years or so
-        self.stand_init_yr = DS.diamond_square(self.size, min_height=-100, max_height=0, roughness=0.75, random_seed=seed_add(self.primary_random_seed, 1), AS_NP_ARRAY=True).astype(int)
+        self.stand_init_yr = DS.diamond_square(self.size, min_height=-100, max_height=0, roughness=0.95, random_seed=seed_add(self.primary_random_seed, 1), AS_NP_ARRAY=True).astype(int)
         #   the last year in which each cell experienced a stand-replacing fire, leaving dead trees standing
-        self.stand_rplc_fire_yr = DS.diamond_square(self.size, min_height=-100, max_height=0, roughness=0.75, random_seed=seed_add(self.primary_random_seed, 2), AS_NP_ARRAY=True).astype(int)
+        self.stand_rplc_fire_yr = DS.diamond_square(self.size, min_height=-100, max_height=0, roughness=0.95, random_seed=seed_add(self.primary_random_seed, 2), AS_NP_ARRAY=True).astype(int)
         #   the last year in which there was a surface fire
-        self.surf_fire_yr = DS.diamond_square(self.size, min_height=-100, max_height=0, roughness=0.75, random_seed=seed_add(self.primary_random_seed, 2), AS_NP_ARRAY=True).astype(int)
+        self.surf_fire_yr = DS.diamond_square(self.size, min_height=-100, max_height=0, roughness=0.95, random_seed=seed_add(self.primary_random_seed, 2), AS_NP_ARRAY=True).astype(int)
 
 
         #units
@@ -230,7 +230,77 @@ class FGPathway:
         surf_fuel_age = self.current_year - self.surf_fire_yr[loc[0], loc[1]]
         return min( ladder_fuel_age, surf_fuel_age)
 
+    ###########################
+    ### STATISTICS METHODS  ###
+    ###########################
 
+    def get_age_class_histogram_data(self):
+        """Gets an array of age class counts for each decade up to 150 yrs
+
+        PARAMETERS
+        ----------
+        None
+
+        RETURNS
+        -------
+        Length 15 list, with #of cells in each age class, by decade.
+        """
+
+        hist_data = [0]*15
+
+        for i in range(self.size[0]):
+            for j in range(self.size[1]):
+
+                #convert age into bin index
+                bin = math.floor((self.get_age([i,j]) / 10))
+
+                #cap at index 14
+                bin = min(bin,14)
+
+                #count it
+                hist_data[ bin ] += 1
+
+        return hist_data
+
+    def get_age_class_percentiles(self):
+        """Gets an array of age class percentiles
+
+        PARAMETERS
+        ----------
+        None
+
+        RETURNS
+        -------
+        Length 11 list, with each percentile: 0%, 10%, 20%... 100%
+        """
+        init_years = np.ravel(self.stand_init_yr)
+        ages = self.current_year - init_years
+        percentile_data = [ np.percentile(ages, perc) for perc in range(0,101,10)]
+             
+        return percentile_data
+
+    def get_fire_stats(self, year=-1):
+        """Acres burned and Acres with crown fires in a given year
+
+        PARAMETERS
+        ----------
+        year
+            Optional: Default is the most recent year. Which year in the 
+            current history to report on. 
+
+        RETURNS
+        -------
+        Acres burned, Acres crowned
+        """
+
+        #default case, report latest
+        if year==-1:
+            return self.year_history[-1].acres_burned, self.year_history[-1].acres_crown_burned
+        elif (year <= self.current_year) and (year >= 0):
+            return self.year_history[year].acres_burned, self.year_history[year].acres_crown_burned
+        else:
+            #error case
+            return (-1,-1)
 
 class YearRecord:
     """Records information about a single simulation year.
@@ -275,7 +345,6 @@ class YearRecord:
         self.acres_harvested = values_from_harvest_model["Acres Cut"]
         self.volume_harvested = values_from_harvest_model["Volume Cut"]
         self.harvest_revenue = values_from_harvest_model["Revenue"]
-
 
     def update_fire(self, fire_records):
         """Takes a list of fire records and updates values accordingly"""
