@@ -130,8 +130,8 @@ class FGPathway:
         #generate ignition locations
         def _rand_loc(i):
             random.seed(seed_add(weather_seed, i+253456))
-            _x = random.uniform(self.size[0], self.size[1])
-            _y = random.uniform(self.size[0], self.size[1])
+            _x = random.uniform(0, self.size[0])
+            _y = random.uniform(0, self.size[1])
             return (_x, _y)
 
         locations = [ _rand_loc(i) for i in range(len(weathers))  ]
@@ -326,7 +326,7 @@ class YearRecord:
         self.suppression_costs = 0.0
         self.acres_burned = 0
         self.acres_crown_burned = 0
-        self.fire_records = []
+        #self.fire_records = []
 
         self.harvest_revenue = 0.0
         self.acres_harvested = 0
@@ -348,7 +348,10 @@ class YearRecord:
 
     def update_fire(self, fire_records):
         """Takes a list of fire records and updates values accordingly"""
-        self.fire_records = fire_records
+        #add new records to the history
+        self.fire_history = self.fire_history + fire_records
+
+        #look through the new records and update various totals for this year
         for fr in fire_records:
             #for any weather streams that had no fire days, a None value will end
             # up being in the list of fire_records, so test for it being not None:
@@ -357,3 +360,33 @@ class YearRecord:
                 self.suppression_costs += fr.suppression_cost
                 self.acres_burned += fr.acres_burned
                 self.acres_crown_burned += fr.acres_crown_burned
+
+    def print_fire_summary(self):
+        """If there are any fire records with spreading fires, print them to standard out"""
+        
+        if len(self.fire_history) > 0:
+            print("Fires in Year {0}".format(self.year))
+        else:
+            return None
+
+        #we haven't returned, so print the history for each fire
+        fire_count = 0
+        for record in self.fire_history:
+            if record:
+                print("  Fire {}".format(fire_count))
+                
+                print("     Location: {}".format(record.ignition_location ) )
+                print("     Total Days: {}".format(len(record.weather) ) )
+                print("     Suppressed: {}".format(record.suppressed ) )
+                print("     Supr. Cost: {}".format(record.suppression_cost ) )
+                print("     Acres Burned: {0}".format(record.acres_burned) )
+                print("     Acres Crowned: {0}".format(record.acres_crown_burned ) )
+                if not record.note == "":
+                    print("     Note: {}".format(record.note) )
+                print("")
+                print("Weather:")
+                for w in record.weather:
+                    print(w)
+                print("")
+                
+                fire_count += 1
