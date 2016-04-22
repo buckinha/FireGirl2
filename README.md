@@ -7,27 +7,20 @@ The simulator is designed to be called from other Python code, as a Markov decis
 This is an ONGOING PROJECT, and the simulator code IS NOT COMPLETE. It is not ready for application in machine learning, policy search, etc..., though the goal is to get there soon. 
 
 
-What is simulated/modelled:
-
-  -Tree Growth, primarily modelled as Ponderosa Pine, growing in NE Oregon.
-  
-  -Timber Values
-  
-  -Weather
-  
-  -Fire Spread, making use of the Canadian FWI system, and emperical studies of fire shape, size, and spread rates, and fuel models.
-  
-  -Timber Harvest: As a selection cut system typical of Ponderosa Pine on commercial land
-  
-  -Randomized landscape generation
-  
-  -Wildfire suppression policies: user defined, with access to all of the ongoing simulation state values, as desired.
+##What is simulated/modelled:
+...Tree Growth, primarily modelled as Ponderosa Pine, growing in NE Oregon.
+...Timber Values
+...Weather
+...Fire Spread, making use of the Canadian FWI system, and emperical studies of fire shape, size, and spread rates, and fuel models.
+...Timber Harvest: As a selection cut system typical of Ponderosa Pine on commercial land
+...Randomized landscape generation
+...Wildfire suppression policies: user defined, with access to all of the ongoing simulation state values, as desired.
 
 
-Coming Soon:
-  -User Manual
-  -Research Background and emperical studies behind FireGirl2's model components
-  -Model Validation Results
+##Coming Soon:
+...User Manual
+...Research Background and emperical studies behind FireGirl2's model components
+...Model Validation Results
   
 
 
