@@ -8,12 +8,19 @@ This is an ONGOING PROJECT, and the simulator code IS NOT COMPLETE. It is not re
 
 
 What is simulated/modelled:
+
   -Tree Growth, primarily modelled as Ponderosa Pine, growing in NE Oregon.
+  
   -Timber Values
+  
   -Weather
+  
   -Fire Spread, making use of the Canadian FWI system, and emperical studies of fire shape, size, and spread rates, and fuel models.
+  
   -Timber Harvest: As a selection cut system typical of Ponderosa Pine on commercial land
+  
   -Randomized landscape generation
+  
   -Wildfire suppression policies: user defined, with access to all of the ongoing simulation state values, as desired.
 
 
